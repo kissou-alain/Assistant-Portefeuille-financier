@@ -1,0 +1,22 @@
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.venv/
+venv/
+.DS_Store
+*.tmp
+
+# Données volumineuses : régénérées par `python -m src.data_download` et par le notebook
+data/raw/*.csv
+data/processed/*.csv
+data/processed/*.csv.gz
+data/backup/
+
+# Modèles entraînés : régénérés par le notebook
+models/*.joblib
+models/*.zip
+
+# Application web (Next.js)
+web/node_modules/
+web/.next/
+web/out/
