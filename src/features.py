@@ -82,7 +82,13 @@ def compute_asset_features(prices: pd.DataFrame, macro: pd.DataFrame,
     panel = panel.reset_index()
     panel["asset_class"] = panel["ticker"].map(ASSET_CLASS)
 
-    # Cible : surperformance vs médiane transversale (sur les actifs ayant un rendement futur)
+    # Cible principale (RÉGRESSION) : rendement excédentaire relatif à la moyenne transversale
+    #   y_{i,t} = r_{i,t→t+H} − moyenne_j r_{j,t→t+H}
+    # On retire l'effet « marché » commun à tous les actifs : seul compte le classement
+    # relatif, qui est l'information utile pour choisir ENTRE les actifs.
+    mean_cs = panel.groupby("date")["fwd_ret"].transform("mean")
+    panel["target_reg"] = panel["fwd_ret"] - mean_cs
+    # Cible secondaire (CLASSIFICATION) : surperformance vs médiane transversale
     med = panel.groupby("date")["fwd_ret"].transform("median")
     panel["target"] = np.where(panel["fwd_ret"].isna(), np.nan,
                                (panel["fwd_ret"] > med).astype(float))
