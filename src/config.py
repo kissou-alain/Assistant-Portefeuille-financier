@@ -44,8 +44,9 @@ UNIVERSE = {
     "XLU": ("Secteur Services publics", "Actions"),
     # Immobilier coté
     "VNQ": ("Immobilier coté US (REIT)", "Immobilier"),
+    # Poche monétaire / quasi-monétaire (duration ≈ 2 ans, risque de taux faible)
+    "SHY": ("Bons du Trésor US 1-3 ans", "Monétaire"),
     # Obligations
-    "SHY": ("Bons du Trésor US 1-3 ans", "Obligations"),
     "IEF": ("Obligations Trésor US 7-10 ans", "Obligations"),
     "TLT": ("Obligations Trésor US 20+ ans", "Obligations"),
     "LQD": ("Obligations entreprises Investment Grade", "Obligations"),
@@ -151,21 +152,35 @@ EMBARGO_DAYS = 35          # purge : ~21 jours de bourse + marge (étiquettes ch
 # ---------------------------------------------------------------------------
 # Contraintes d'allocation par profil de risque
 # ---------------------------------------------------------------------------
+# defensive_min : part minimale « défensive » = obligations + monétaire.
+# Décision de la refonte (22/11/2026), prise AVANT toute nouvelle exécution sur le test :
+# un investisseur prudent doit pouvoir détenir du quasi-monétaire (SHY) sans risque de taux,
+# au lieu d'être forcé vers des obligations longues (logique des allocations MiFID II / AMMC).
+# Limite assumée : la crise obligataire de 2022 était connue au moment de ce choix
+# (la période de test avait été vue lors des versions précédentes du projet).
+# long_bond_max : plafond sur les obligations du Trésor à 20 ans et plus (TLT), très sensibles aux taux.
 PROFILE_CONSTRAINTS = {
-    "Prudent": dict(target_vol=0.06, risk_aversion=10.0, w_max=0.25,
-                    equity_max=0.35, bond_min=0.50, commodity_max=0.10, crypto_max=0.00),
-    "Équilibré": dict(target_vol=0.10, risk_aversion=5.0, w_max=0.20,
-                      equity_max=0.60, bond_min=0.25, commodity_max=0.15, crypto_max=0.02),
-    "Dynamique": dict(target_vol=0.16, risk_aversion=2.5, w_max=0.20,
-                      equity_max=0.90, bond_min=0.00, commodity_max=0.20, crypto_max=0.05),
+    "Prudent": dict(target_vol=0.06, risk_aversion=10.0, w_max=0.25, cash_max=0.40,
+                    equity_max=0.35, defensive_min=0.50, long_bond_max=0.10,
+                    commodity_max=0.10, crypto_max=0.00),
+    "Équilibré": dict(target_vol=0.10, risk_aversion=5.0, w_max=0.20, cash_max=0.30,
+                      equity_max=0.60, defensive_min=0.25, long_bond_max=0.15,
+                      commodity_max=0.15, crypto_max=0.02),
+    "Dynamique": dict(target_vol=0.16, risk_aversion=2.5, w_max=0.20, cash_max=0.20,
+                      equity_max=0.90, defensive_min=0.00, long_bond_max=0.20,
+                      commodity_max=0.20, crypto_max=0.05),
 }
+LONG_BOND_TICKERS = ["TLT"]
+CASH_TICKER = "SHY"
 # Allocation stratégique de référence par profil (poids par classe d'actifs, répartis à parts
 # égales entre les actifs disponibles de la classe). Elle sert à calculer les rendements
 # d'équilibre implicites π = λ·Σ·w_ref (Black-Litterman) : sans signal ML, l'optimiseur
 # retrouve cette allocation au lieu de dériver vers la variance minimale.
 PROFILE_BENCHMARK = {
-    "Prudent": {"Actions": 0.25, "Immobilier": 0.05, "Obligations": 0.65, "Matières premières": 0.05},
-    "Équilibré": {"Actions": 0.50, "Immobilier": 0.05, "Obligations": 0.38, "Matières premières": 0.07},
+    "Prudent": {"Actions": 0.25, "Immobilier": 0.05, "Obligations": 0.40, "Monétaire": 0.25,
+                "Matières premières": 0.05},
+    "Équilibré": {"Actions": 0.50, "Immobilier": 0.05, "Obligations": 0.33, "Monétaire": 0.05,
+                  "Matières premières": 0.07},
     "Dynamique": {"Actions": 0.75, "Immobilier": 0.05, "Obligations": 0.10, "Matières premières": 0.08,
                   "Crypto": 0.02},
 }

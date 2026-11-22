@@ -22,8 +22,8 @@ from scipy.optimize import minimize
 from sklearn.covariance import LedoitWolf
 
 from .questionnaire import PROFILE_ORDER, has_answers, most_prudent, score_questionnaire
-from .config import (ASSET_CLASS, ASSET_NAME, DYNAMIC_RULE, LOOKBACK_COV, PROFILE_BENCHMARK,
-                     PROFILE_CLASSES, PROFILE_CONSTRAINTS, REGIME_VOL_MULTIPLIER,
+from .config import (ASSET_CLASS, ASSET_NAME, DYNAMIC_RULE, LONG_BOND_TICKERS, LOOKBACK_COV,
+                     PROFILE_BENCHMARK, PROFILE_CLASSES, PROFILE_CONSTRAINTS, REGIME_VOL_MULTIPLIER,
                      TURNOVER_PENALTY)
 
 
@@ -139,11 +139,6 @@ class InvestorProfileAgent(BaseAgent):
         self.post("profile_proba", proba)
         return profile, proba
 
-        profile = max(proba, key=proba.get)
-        self.post("profile", profile, f"Profil prédit : {profile} (p={proba[profile]:.2f})")
-        self.post("profile_proba", proba)
-        return profile, proba
-
 
 # ---------------------------------------------------------------------------
 # 2. Agent Régime de marché (apprentissage non supervisé – mélange gaussien)
@@ -252,8 +247,9 @@ class RiskAgent(BaseAgent):
         eq = exp.get("Actions", 0) + exp.get("Immobilier", 0)
         if eq > constraints["equity_max"] + 1e-3:
             violations.append(f"actions {eq:.1%} > {constraints['equity_max']:.0%}")
-        if exp.get("Obligations", 0) < constraints["bond_min"] - 1e-3:
-            violations.append(f"obligations {exp.get('Obligations', 0):.1%} < {constraints['bond_min']:.0%}")
+        defensive = exp.get("Obligations", 0) + exp.get("Monétaire", 0)
+        if defensive < constraints["defensive_min"] - 1e-3:
+            violations.append(f"obligations + monétaire {defensive:.1%} < {constraints['defensive_min']:.0%}")
         if exp.get("Crypto", 0) > constraints["crypto_max"] + 1e-3:
             violations.append("exposition crypto excessive")
         ok = not violations
@@ -278,7 +274,9 @@ class AllocationAgent(BaseAgent):
     @staticmethod
     def _masks(tickers):
         cls = np.array([ASSET_CLASS[t] for t in tickers])
-        return {"equity": np.isin(cls, ["Actions", "Immobilier"]), "bond": cls == "Obligations",
+        return {"equity": np.isin(cls, ["Actions", "Immobilier"]),
+                "defensive": np.isin(cls, ["Obligations", "Monétaire"]),
+                "cash": cls == "Monétaire", "long_bond": np.isin(tickers, LONG_BOND_TICKERS),
                 "commo": cls == "Matières premières", "crypto": cls == "Crypto"}
 
     def optimize(self, alpha: pd.Series, cov: pd.DataFrame, constraints: dict,
@@ -294,12 +292,19 @@ class AllocationAgent(BaseAgent):
 
         bounds = []
         for i, t in enumerate(tickers):
-            ub = constraints["crypto_max"] if m["crypto"][i] else constraints["w_max"]
+            if m["crypto"][i]:
+                ub = constraints["crypto_max"]
+            elif m["cash"][i]:
+                ub = constraints["cash_max"]
+            elif m["long_bond"][i]:
+                ub = min(constraints["w_max"], constraints["long_bond_max"])
+            else:
+                ub = constraints["w_max"]
             bounds.append((0.0, ub))
         cons = [
             {"type": "eq", "fun": lambda w: w.sum() - 1},
             {"type": "ineq", "fun": lambda w: constraints["equity_max"] - w[m["equity"]].sum()},
-            {"type": "ineq", "fun": lambda w: w[m["bond"]].sum() - constraints["bond_min"]},
+            {"type": "ineq", "fun": lambda w: w[m["defensive"]].sum() - constraints["defensive_min"]},
             {"type": "ineq", "fun": lambda w: constraints["commodity_max"] - w[m["commo"]].sum()},
             {"type": "ineq", "fun": lambda w: target_vol ** 2 - w @ S @ w},
         ]
