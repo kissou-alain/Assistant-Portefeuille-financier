@@ -5,6 +5,7 @@ __pycache__/
 venv/
 .DS_Store
 *.tmp
+catboost_info/
 
 # Données volumineuses : régénérées par `python -m src.data_download` et par le notebook
 data/raw/*.csv

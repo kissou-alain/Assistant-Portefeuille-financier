@@ -112,7 +112,8 @@ def regression_models(quick: bool = False) -> dict:
                          "m__min_child_weight": [50, 200], "m__reg_lambda": [1, 10]})
     if cb is not None:
         m["CatBoost"] = ("Ensemble (boosting)",
-                         cb.CatBoostRegressor(verbose=0, random_seed=rs, iterations=300, thread_count=1),
+                         cb.CatBoostRegressor(verbose=0, random_seed=rs, iterations=300, thread_count=1,
+                                              allow_writing_files=False),
                          {"m__learning_rate": [0.02, 0.05], "m__depth": [3, 5], "m__l2_leaf_reg": [3, 30]})
     if quick:   # test rapide : on garde seulement le 1er point de chaque grille
         m = {k: (f, e, {p: v[:1] for p, v in g.items()}) for k, (f, e, g) in m.items()}
