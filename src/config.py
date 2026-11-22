@@ -123,6 +123,29 @@ SCF_CAT_FEATURES = [
     "ISHOPNONE", "ISHOPGRDL", "ISHOPMODR", "IFINPRO", "ISELF", "IINTERNET", "IFRIENDWORK",
     "IMAGZNEWS", "ICALL", "INTERNET",
 ]
+# Libellés lisibles des variables SCF (explications SHAP du notebook et de l'application)
+SCF_LABELS = {
+    "AGE": "Âge", "KIDS": "Enfants à charge", "INCOME": "Revenu annuel", "NORMINC": "Revenu habituel",
+    "WAGEINC": "Revenus salariaux", "NETWORTH": "Patrimoine net", "ASSET": "Total des actifs",
+    "DEBT": "Total des dettes", "LEVRATIO": "Dettes / actifs", "DEBT2INC": "Dettes / revenu",
+    "KNOWL": "Connaissances financières (0-10)", "FINLIT": "Quiz de culture financière (0-3)",
+    "EDUC": "Durée des études", "HHSEX": "Sexe", "EDCL": "Niveau d'études", "MARRIED": "En couple",
+    "OCCAT1": "Situation professionnelle", "OCCAT2": "Catégorie professionnelle", "LF": "Actif sur le marché du travail",
+    "LIFECL": "Étape du cycle de vie", "HOUSECL": "Propriétaire du logement", "HBUS": "Possède une entreprise",
+    "SAVED": "A épargné l'an dernier", "WSAVED": "Comportement d'épargne", "SPENDMOR": "Dépenses plus élevées que prévu",
+    "SPENDLESS": "Dépenses plus faibles que prévu", "EXPENSHILO": "Dépenses inhabituelles", "LATE": "Retards de paiement",
+    "HPAYDAY": "Prêt sur salaire", "BNKRUPLAST5": "Faillite (5 ans)", "FORECLLAST5": "Saisie immobilière (5 ans)",
+    "TURNDOWN": "Crédit refusé", "EMERGSAV": "Épargne de précaution", "EMERGBORR": "Emprunterait en cas d'urgence",
+    "EMERGCUT": "Réduirait ses dépenses en cas d'urgence", "EMERGPSTP": "Reporterait ses paiements en cas d'urgence",
+    "SAVRES1": "Ne peut pas épargner", "SAVRES2": "Épargne pour les études", "SAVRES3": "Épargne pour la famille",
+    "SAVRES4": "Épargne pour le logement", "SAVRES5": "Épargne pour des achats", "SAVRES6": "Épargne pour la retraite",
+    "SAVRES7": "Épargne de précaution / liquidité", "SAVRES8": "Épargne pour investir", "SAVRES9": "Épargne sans but précis",
+    "ISHOPNONE": "Ne compare pas les placements", "ISHOPGRDL": "Compare beaucoup les placements",
+    "ISHOPMODR": "Compare modérément les placements", "IFINPRO": "Conseiller financier", "ISELF": "Décide seul",
+    "IINTERNET": "S'informe sur internet", "IFRIENDWORK": "Conseils d'amis / collègues", "IMAGZNEWS": "Presse spécialisée",
+    "ICALL": "Démarchage téléphonique", "INTERNET": "Banque en ligne",
+}
+
 PROFILE_CLASSES = ["Prudent", "Équilibré", "Dynamique"]
 
 # Formulation de la tâche de l'agent Profil :
