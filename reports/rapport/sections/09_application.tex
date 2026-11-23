@@ -1,4 +1,74 @@
 \section{Application web et déploiement}
 \label{sec:application}
 
-À rédiger.
+Un modèle n'a de valeur que s'il est utilisé. La dernière étape du processus présenté en cours est le \emph{déploiement} : nous avons transformé le système en une application web qu'un conseiller et son client peuvent utiliser ensemble.
+
+\subsection{Architecture}
+
+L'application suit une architecture classique en deux parties :
+\begin{itemize}
+  \item une \textbf{API} écrite avec FastAPI (Python), qui charge au démarrage les modèles entraînés par le notebook et expose les calculs : questionnaire, profil, recommandation, marché, backtest, laboratoire des modèles, mise à jour des données. Une recommandation complète est calculée en moins de 0,6 seconde ;
+  \item une \textbf{interface} écrite avec Next.js et React, qui appelle cette API et présente les résultats sous forme de pages, de tableaux et de graphiques interactifs, avec un thème clair et un thème sombre.
+\end{itemize}
+Le code de l'API réutilise exactement les modules du notebook (\texttt{src/}) : il n'y a qu'une seule implémentation de chaque agent, testée dans le notebook et utilisée dans l'application.
+
+\subsection{Parcours de l'utilisateur}
+
+L'application compte neuf pages, qui suivent le parcours d'un rendez-vous de conseil :
+\begin{enumerate}
+  \item \textbf{Accueil} : présentation du système et état du marché du jour.
+  \item \textbf{Diagnostic} : le client renseigne sa situation (âge, revenus, patrimoine, dettes, dans sa devise) et répond aux sept questions du questionnaire.
+  \item \textbf{Profil} : le profil retenu, ses deux sources (questionnaire et modèle), l'éventuelle alerte d'incohérence, et l'explication SHAP des variables qui ont pesé.
+  \item \textbf{Portefeuille} : la recommandation (répartition par classe et par ligne), son risque ex ante, la position du portefeuille sur la frontière efficiente, une projection de la valeur sur dix ans en éventail de scénarios, et l'explication rédigée par l'agent Explication.
+  \item \textbf{Marché} : le régime du jour et ses probabilités, les alertes, et l'historique des cours de chaque actif.
+  \item \textbf{Backtest} : les performances historiques de la section~\ref{sec:allocation_backtest}, avec leurs tests de significativité.
+  \item \textbf{Laboratoire} : les tableaux de comparaison des modèles, les figures du notebook et une fiche explicative pour chaque modèle.
+  \item \textbf{Journal} : la trace complète des échanges entre agents sur le tableau noir.
+  \item \textbf{Données} : la date des données, et la mise à jour des cours.
+\end{enumerate}
+
+Le journal et le laboratoire répondent à notre objectif d'explicabilité : un utilisateur peut remonter de la recommandation à la décision de chaque agent, puis au modèle et à son évaluation.
+
+\paragraph{Mise à jour sécurisée des données.} Depuis la page Données, l'utilisateur peut télécharger les derniers cours. Seuls les jours manquants sont téléchargés, en 30 secondes au plus ; toutes les variables sont recalculées et contrôlées avant écriture (actifs manquants, dates incohérentes, résultats vides) ; les données précédentes sont sauvegardées et peuvent être restaurées. Les modèles ne sont pas ré-entraînés : ils s'appliquent aux nouvelles données, et un ré-entraînement passe par une nouvelle exécution du notebook.
+
+\subsection{Version en ligne}
+
+Pour que l'application puisse être consultée sans installation, nous l'avons publiée en ligne\footnote{\url{https://assistant-portefeuille-financier.vercel.app}}. Les hébergeurs gratuits de serveurs Python exigeant une carte bancaire, nous avons retenu une solution qui n'a besoin d'aucun serveur de calcul (figure~\ref{fig:deploiement}) :
+\begin{itemize}
+  \item \textbf{les résultats sont calculés par le code Python du projet} : un script appelle les mêmes fonctions que l'API, avec les modèles entraînés, et enregistre leurs sorties (marché, régime, alertes, portefeuille de chaque profil, backtest, laboratoire) ;
+  \item \textbf{le profil du visiteur est calculé dans son navigateur}. Le modèle de profil étant une régression logistique, il suffit d'exporter ses paramètres appris (médianes d'imputation, bornes d'écrêtage, moyennes et écarts-types, encodage, coefficients) pour refaire exactement le même calcul, explication SHAP comprise. Aucune donnée saisie par le visiteur ne quitte son ordinateur ;
+  \item \textbf{les données sont mises à jour automatiquement} : chaque soir de semaine, après la clôture de la bourse de New York, une tâche GitHub Actions télécharge les nouveaux cours, relance le script et enregistre le résultat ; le site est alors republié.
+\end{itemize}
+
+\begin{figure}[!htb]
+  \centering
+  \begin{tikzpicture}[font=\small,
+      bx/.style={draw=black!60, rounded corners=3pt, align=center, minimum height=1cm, minimum width=3.1cm},
+      fl/.style={-latex, thick, gray!70!black}]
+    \node[bx, fill=gray!10]   (nb)  at (0,0)    {Notebook\\ (entraînement)};
+    \node[bx, fill=blue!10]   (mod) at (4,0)    {Modèles entraînés\\ et données};
+    \node[bx, fill=green!10]  (api) at (8.3,1.1)  {API FastAPI\\ (version locale)};
+    \node[bx, fill=orange!12] (exp) at (8.3,-1.1) {Export des résultats\\ (chaque soir)};
+    \node[bx, fill=purple!10] (web) at (12.4,1.1) {Interface Next.js\\ locale};
+    \node[bx, fill=purple!10] (vc)  at (12.4,-1.1){Site en ligne\\ (profil calculé\\ dans le navigateur)};
+    \draw[fl] (nb) -- (mod);
+    \draw[fl] (mod) -- (api.west);
+    \draw[fl] (mod) -- (exp.west);
+    \draw[fl] (api) -- (web);
+    \draw[fl] (exp) -- (vc);
+  \end{tikzpicture}
+  \caption{Une seule chaîne de calcul, deux modes de diffusion : l'application locale interroge l'API Python ; le site en ligne affiche les résultats exportés par le même code et recalcule le profil dans le navigateur.}
+  \label{fig:deploiement}
+\end{figure}
+
+Cette version en ligne ne change rien au fond du projet : tous les résultats viennent du code Python et des modèles du notebook. Pour nous en assurer, un \textbf{test d'égalité} compare les réponses du site et celles de l'API Python sur 200 clients générés aléatoirement (devises, montants, situations, questionnaires complets, partiels ou absents) et sur 25 recommandations complètes. Les profils, alertes, textes et journaux sont identiques, et l'écart numérique maximal sur les probabilités et les contributions SHAP est de $3{,}5 \times 10^{-16}$, la précision des nombres en machine.
+
+\subsection{Reproductibilité}
+
+L'ensemble du projet est publié sur GitHub\footnote{\url{https://github.com/kissou-alain/Assistant-Portefeuille-financier}}, données et modèles compris. Trois niveaux d'utilisation sont possibles :
+\begin{itemize}
+  \item consulter le site en ligne, sans rien installer ;
+  \item cloner le dépôt et lancer l'application localement avec un script unique, sans ré-entraîner : les modèles sont fournis ;
+  \item tout reproduire : retélécharger les données et exécuter le notebook complet, qui ré-entraîne tous les modèles et régénère tous les tableaux et figures de ce rapport en 22 minutes sur un ordinateur portable.
+\end{itemize}
+Le notebook est construit à partir de fichiers de sections, un par partie du plan, ce qui a permis de développer et tester chaque partie séparément. Un mode rapide l'exécute en quelques minutes pour vérifier que tout fonctionne. La graine aléatoire est fixée, et les données téléchargées sont mises en cache pour que deux exécutions donnent les mêmes résultats.

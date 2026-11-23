@@ -1,4 +1,66 @@
 \section{Apprentissage par renforcement}
 \label{sec:renforcement}
 
-À rédiger.
+L'agent Allocation de la section~\ref{sec:systeme} résout un problème d'optimisation dont nous écrivons nous-mêmes l'objectif. L'apprentissage par renforcement propose une autre voie : laisser un agent \emph{apprendre} une politique d'allocation par essais et erreurs, en interagissant avec le marché. Le cours le présente précisément sur un exemple de gestion de portefeuille ; nous l'avons mis en œuvre comme alternative à l'optimiseur.
+
+\subsection{Formulation}
+
+À chaque pas de temps, l'agent observe un état $s_t$, choisit une action $a_t$ selon sa politique $\pi(a\mid s)$, reçoit une récompense $r_t$ et passe à l'état $s_{t+1}$. Il cherche la politique qui maximise la récompense cumulée actualisée $G_t = \sum_{k\geq 0} \gamma^k r_{t+k}$. Le tableau~\ref{tab:rl} décrit nos choix.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Formulation du problème d'apprentissage par renforcement.}
+  \label{tab:rl}
+  \begin{tabularx}{\textwidth}{@{}l L@{}}
+    \toprule
+    \textbf{Composante} & \textbf{Dans ce projet} \\
+    \midrule
+    Environnement & Le marché historique, rejoué mois par mois (environnement \texttt{Gymnasium} écrit pour le projet) \\
+    État $s_t$ & 5 variables de régime, 3 probabilités de régime, rendements à 1 et 3 mois et volatilité à 3 mois de chaque classe d'actifs, poids actuels (25 nombres) \\
+    Action $a_t$ & Répartition entre 5 classes d'actifs (actions, immobilier, obligations, monétaire, matières premières) \\
+    Récompense $r_t$ & $\sum_j R_j - \frac{\lambda}{2}\sum_j R_j^2 - c\,\lVert w_t - w_{t-1}\rVert_1$ : rendement du mois, moins une pénalité de risque (aversion $\lambda$ du profil), moins les coûts de transaction \\
+    Politique & Réseau de neurones à deux couches de 64 neurones, appris par PPO \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\paragraph{L'algorithme PPO.} \emph{Proximal Policy Optimization}~\cite{schulman2017} appartient aux méthodes fondées sur la politique : le réseau reçoit l'état et renvoie directement une distribution de probabilité sur les actions. Le dilemme exploration-exploitation est géré par le caractère aléatoire de cette distribution pendant l'entraînement, où l'agent essaie des allocations variées ; la politique est ensuite utilisée de façon déterministe. PPO limite l'ampleur de chaque mise à jour de la politique, ce qui le rend plus stable que les méthodes de gradient de politique plus anciennes. Nous avons utilisé l'implémentation de \texttt{stable-baselines3}~\cite{raffin2021}.
+
+\paragraph{Respect des contraintes.} L'action brute passe par une fonction \emph{softmax}, qui donne des poids positifs de somme 1, puis elle est \textbf{projetée} sur l'ensemble des allocations admissibles du profil (plafond d'actions, part défensive minimale, plafonds du monétaire et des matières premières). L'agent ne peut donc jamais proposer un portefeuille interdit.
+
+\paragraph{Protocole.} L'agent est entraîné sur 2011-2019, par épisodes de 24 mois tirés au hasard ; la meilleure de deux graines aléatoires est choisie sur la validation 2020-2021 ; une seule évaluation est faite sur le test. La règle de décision est fixée à l'avance : PPO ne remplace l'optimiseur que s'il le bat significativement pour un profil.
+
+\paragraph{Limites assumées.} L'entraînement ne dispose que d'environ 108 mois, très peu pour l'apprentissage par renforcement, qui consomme habituellement des millions d'interactions. Le Bitcoin est exclu, faute d'historique avant 2014. Enfin, le budget de volatilité n'est pas une contrainte stricte comme dans l'optimiseur : il est seulement \emph{pénalisé} dans la récompense.
+
+\subsection{Résultats}
+
+Sur la validation, les résultats sont flatteurs : ratio de Sharpe de 0,59 à 0,73 selon le profil et la graine. Mais la volatilité réalisée y atteint déjà 12 \% pour le profil Prudent, le double de sa cible, et 27 \% pour le profil Dynamique : la pénalité de risque ne suffit pas à tenir le budget.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Agent PPO sur le test, comparé au système multi-agent et au 1/N de même risque.}
+  \label{tab:ppo}
+  \begin{tabular}{@{}l l r r r r r@{}}
+    \toprule
+    \textbf{Profil} & \textbf{Stratégie} & \textbf{Rendement} & \textbf{Volatilité} & \textbf{Sharpe} & \textbf{Perte max.} & \textbf{Rotation} \\
+    \midrule
+    \multirow{3}{*}{Prudent} & PPO & 1,9 \% & 8,5 \% & $-0{,}20$ & $-18{,}8$ \% & 362 \% \\
+     & Multi-agent & 2,2 \% & 6,3 \% & $-0{,}26$ & $-15{,}0$ \% & 93 \% \\
+     & 1/N vol. cible & 4,8 \% & 6,9 \% & 0,13 & $-12{,}9$ \% & 81 \% \\
+    \midrule
+    \multirow{3}{*}{Équilibré} & PPO & 1,9 \% & 11,4 \% & $-0{,}12$ & $-23{,}5$ \% & 564 \% \\
+     & Multi-agent & 4,7 \% & 9,6 \% & 0,12 & $-18{,}2$ \% & 74 \% \\
+     & 1/N vol. cible & 6,2 \% & 10,5 \% & 0,25 & $-18{,}0$ \% & 95 \% \\
+    \midrule
+    \multirow{3}{*}{Dynamique} & PPO & 1,7 \% & 15,0 \% & $-0{,}08$ & $-28{,}4$ \% & 663 \% \\
+     & Multi-agent & 8,1 \% & 13,3 \% & 0,35 & $-19{,}9$ \% & 67 \% \\
+     & 1/N vol. cible & 7,1 \% & 11,7 \% & 0,30 & $-19{,}6$ \% & 61 \% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Sur le test (tableau~\ref{tab:ppo}), l'agent PPO a un ratio de Sharpe négatif pour les trois profils. Le bootstrap par blocs montre qu'il fait significativement moins bien que le 1/N de même risque pour les trois profils, et que le système multi-agent pour le profil Dynamique (différence de Sharpe de $-0{,}43$, intervalle $[-0{,}84 ; -0{,}11]$). Il dépasse la volatilité cible de chaque profil, subit des pertes maximales plus fortes et échange de 3,6 à 6,6 fois son portefeuille par an, contre moins d'une fois pour l'optimiseur.
+
+\paragraph{Interprétation.} Le passage de résultats flatteurs en validation à des résultats négatifs en test est le symptôme classique du \textbf{surapprentissage}. Avec une centaine de mois, l'agent a appris des régularités propres aux années 2010 (des actions qui montent, des obligations qui protègent), qui se sont retournées en 2022. Le choix de la graine sur la validation n'a pas suffi : avec si peu de données, la validation elle-même est une mesure bruitée. L'optimiseur moyenne-variance, dont la structure est imposée plutôt qu'apprise, est moins exposé à ce risque. Conformément à la règle fixée à l'avance, \textbf{l'application conserve l'optimiseur}, plus stable et plus facile à expliquer. L'agent PPO reste dans le projet comme démonstration de la méthode et de ses limites sur des données financières rares.
