@@ -1,4 +1,197 @@
 \section{Agent Profil : estimer la capacité à prendre des risques}
 \label{sec:profil}
 
-À rédiger.
+\subsection{Formulation du problème}
+
+Un conseiller distingue deux notions. La \emph{tolérance au risque} est ce que le client déclare : son horizon, sa réaction face à une baisse. La \emph{capacité à supporter des pertes} dépend de sa situation : un ménage peu aisé, sans épargne de précaution, n'a pas de marge pour absorber une baisse de ses placements, quoi qu'il déclare. La première se mesure par un questionnaire ; la seconde peut s'estimer à partir de données. C'est le rôle de l'agent Profil.
+
+\paragraph{Données et cible.} L'enquête SCF 2022 de la Réserve fédérale décrit 4\,595 ménages américains réels. Une de ses questions demande au ménage s'il est prêt à prendre des risques financiers. Nous en tirons une cible binaire : \textbf{Prudent} si le ménage répond \og aucun risque \fg{} (31,8 \% des ménages), \textbf{Non prudent} sinon. Les variables explicatives décrivent la situation du ménage : âge, enfants, revenus, patrimoine, dettes, études, situation professionnelle et familiale, connaissances et culture financières, comportements d'épargne. Nous avons exclu les variables décrivant la composition du portefeuille du ménage (part en actions, par exemple) : elles sont une \emph{conséquence} de son aversion au risque, et les utiliser reviendrait à faire fuiter la cible.
+
+\paragraph{Pourquoi deux classes et non trois ?} Une version précédente du projet cherchait à prédire trois profils (Prudent, Équilibré, Dynamique). La classe Dynamique ne représente qu'environ 5 \% des ménages et s'est révélée inséparable avec ces variables : le F1 macro plafonnait à 0,50 quel que soit le modèle. Plutôt que de forcer le modèle à une tâche impossible, nous lui confions la question à laquelle les données répondent bien (ce ménage doit-il être protégé ?) et laissons le questionnaire décider entre Équilibré et Dynamique.
+
+\paragraph{Un piège de fuite propre à l'enquête.} Pour traiter les non-réponses, le SCF publie chaque ménage sur \emph{cinq lignes} quasi identiques (imputation multiple). Un découpage aléatoire ligne par ligne placerait des copies d'un même ménage dans l'entraînement et dans le test : le modèle serait évalué sur des ménages qu'il a déjà vus. Le découpage est donc fait \textbf{par ménage} : 70 \% pour l'entraînement (3\,216 ménages), 15 \% pour la validation (689) et 15 \% pour le test (690), en conservant la proportion de Prudents (31,7 à 31,8 \% dans chaque partie).
+
+\subsection{Préparation des données}
+
+L'analyse exploratoire, menée sur l'entraînement seul, montre que les Prudents sont plus âgés, nettement moins aisés et déclarent moins de connaissances financières. Les montants (revenu, patrimoine, dettes) sont extrêmement asymétriques : quelques ménages possèdent des centaines de millions de dollars. Le pipeline de prétraitement traite chaque type de variable différemment :
+\begin{itemize}
+  \item \textbf{montants} : imputation par la médiane, transformation logarithmique signée $\operatorname{sign}(x)\ln(1+|x|)$, qui accepte les valeurs négatives (patrimoine net), puis standardisation ;
+  \item \textbf{autres variables numériques} : imputation par la médiane, écrêtage aux quantiles 1 \% et 99 \%, standardisation ;
+  \item \textbf{variables catégorielles} : imputation par la modalité la plus fréquente, encodage \emph{one-hot}, modalités rares regroupées.
+\end{itemize}
+On obtient 115 colonnes à partir de 55 variables (13 numériques, 42 catégorielles). Médianes, quantiles, moyennes et écarts-types sont appris sur l'entraînement uniquement.
+
+\paragraph{Choix des métriques.} Les classes sont déséquilibrées : un modèle qui répond toujours \og Non prudent \fg{} atteint déjà 68 \% d'\emph{accuracy}, sans aucune utilité. Nous utilisons donc l'AUC ROC (qualité du classement des clients, indépendante du seuil), le rappel et la précision de la classe Prudent, le F1 macro et l'\emph{accuracy} équilibrée. Le rappel des Prudents est la métrique métier : manquer un client prudent, c'est lui proposer un portefeuille qu'il ne peut pas supporter.
+
+\subsection{Modèles comparés et réglage}
+
+Nous avons comparé neuf modèles du cours à une référence qui prédit toujours la classe majoritaire : régression logistique avec pénalité $L_2$, KNN, SVM à noyau gaussien, arbre de décision, forêt aléatoire~\cite{breiman2001}, trois algorithmes de \emph{boosting} (LightGBM~\cite{ke2017}, XGBoost~\cite{chen2016}, CatBoost~\cite{prokhorenkova2018}) et un réseau de neurones à deux couches cachées (MLP) entraîné par Adam. La régression logistique modélise
+\begin{equation}
+  p(y=1\mid x) = \sigma\Big(\beta_0 + \sum_j \beta_j x_j\Big), \qquad \sigma(z) = \frac{1}{1+e^{-z}},
+\end{equation}
+et minimise l'entropie croisée binaire plus une pénalité $\lambda\lVert\beta\rVert_2^2$.
+
+Les hyperparamètres de chaque modèle sont choisis par recherche aléatoire (10 combinaisons au plus) avec une validation croisée stratifiée \emph{par groupes} (les ménages) sur l'entraînement, selon l'AUC. La SVM, dont le coût croît au moins avec le carré du nombre d'exemples, est entraînée sur un sous-échantillon de 4\,000 lignes. Avant de voir les résultats, nous avons fixé la règle de choix : retenir la meilleure AUC de validation, mais préférer la régression logistique si elle est à moins de 0,005 du meilleur score, par principe de parcimonie.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Comparaison des modèles sur la validation (seuil 0,5). AUC CV : moyenne de la validation croisée sur l'entraînement.}
+  \label{tab:profil_modeles}
+  \begin{tabular}{@{}l r r r r r r@{}}
+    \toprule
+    \textbf{Modèle} & \textbf{AUC CV} & \textbf{AUC} & \textbf{F1 macro} & \shortstack[r]{\textbf{Précision}\\\textbf{Prudent}} & \shortstack[r]{\textbf{Rappel}\\\textbf{Prudent}} & \textbf{Durée} \\
+    \midrule
+    Régression logistique & 0,839 & \textbf{0,860} & \textbf{0,767} & 0,622 & 0,813 & 12 s \\
+    SVM (noyau RBF)       & 0,842 & 0,853 & 0,763 & 0,704 & 0,639 & 27 s \\
+    CatBoost              & 0,839 & 0,850 & 0,746 & 0,584 & 0,839 & 29 s \\
+    KNN (+ SMOTE)         & 0,833 & 0,849 & 0,752 & 0,595 & 0,830 & 11 s \\
+    XGBoost               & 0,837 & 0,849 & 0,756 & 0,602 & 0,824 & 30 s \\
+    Forêt aléatoire       & 0,839 & 0,849 & 0,754 & 0,602 & 0,814 & 40 s \\
+    LightGBM              & 0,839 & 0,842 & 0,750 & 0,611 & 0,766 & 23 s \\
+    Arbre de décision     & 0,793 & 0,815 & 0,724 & 0,566 & 0,783 & 15 s \\
+    MLP (Adam)            & 0,791 & 0,787 & 0,702 & 0,579 & 0,624 & 36 s \\
+    Classe majoritaire    & 0,500 & 0,500 & 0,406 & 0     & 0     & 1 s \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Interprétation.} Tous les modèles battent nettement la référence (tableau~\ref{tab:profil_modeles}). La régression logistique obtient la meilleure AUC de validation (0,860) : la règle la désigne donc sans même avoir besoin de la clause de parcimonie. Les ensembles d'arbres sont à une dizaine de millièmes derrière, un écart qui n'a pas de sens pratique. Ce résultat nous dit quelque chose sur le problème : la relation entre situation financière et prudence est \emph{essentiellement monotone} (plus de patrimoine, moins de prudence), et un modèle linéaire la capte aussi bien que des modèles beaucoup plus flexibles. Le MLP est le moins bon : avec environ 16\,000 lignes bruitées, sa flexibilité se traduit par de la variance plutôt que par un gain. L'arbre seul, instable, est logiquement battu par les forêts qui en font la moyenne.
+
+Ce choix a une valeur ajoutée qui dépasse l'AUC : la régression logistique est le modèle le plus simple à expliquer, et son explication SHAP est \emph{exacte} (section~\ref{sec:profil_shap}). Elle peut aussi être recalculée à l'identique dans un navigateur, ce que nous exploitons pour la version en ligne de l'application (section~\ref{sec:application}).
+
+\subsection{Classes déséquilibrées : pondération, SMOTE et ADASYN}
+
+Avec un tiers de Prudents, un modèle non corrigé favorise la classe majoritaire. Nous avons comparé trois corrections vues en cours, sur la régression logistique et sur LightGBM :
+\begin{itemize}
+  \item \textbf{pondération des classes} : chaque erreur sur un Prudent pèse davantage dans la fonction de coût ;
+  \item \textbf{SMOTE}~\cite{chawla2002} : création d'exemples synthétiques de la classe minoritaire par interpolation entre un point et l'un de ses voisins, $x_{\text{nouveau}} = x_i + \lambda\,(x_{\text{voisin}} - x_i)$ avec $\lambda \sim \mathcal{U}(0,1)$ ;
+  \item \textbf{ADASYN}~\cite{he2008} : variante de SMOTE qui génère davantage d'exemples dans les zones difficiles.
+\end{itemize}
+Le rééchantillonnage est placé dans un pipeline \texttt{imblearn} : il n'est appliqué qu'aux plis d'entraînement, jamais aux données d'évaluation, sinon le modèle serait évalué sur des points qu'il a lui-même fabriqués.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Effet des corrections du déséquilibre sur la validation (seuil 0,5).}
+  \label{tab:desequilibre}
+  \begin{tabular}{@{}l l r r r r@{}}
+    \toprule
+    \textbf{Modèle} & \textbf{Correction} & \textbf{AUC} & \shortstack[r]{\textbf{Rappel}\\\textbf{Prudent}} & \shortstack[r]{\textbf{Précision}\\\textbf{Prudent}} & \textbf{F1 macro} \\
+    \midrule
+    \multirow{4}{*}{Régression logistique} & aucune & 0,860 & 0,563 & 0,754 & 0,754 \\
+     & pondération & 0,860 & 0,813 & 0,622 & 0,767 \\
+     & SMOTE & 0,859 & 0,824 & 0,625 & 0,771 \\
+     & ADASYN & 0,857 & 0,828 & 0,610 & 0,762 \\
+    \midrule
+    \multirow{4}{*}{LightGBM} & aucune & 0,843 & 0,606 & 0,711 & 0,755 \\
+     & pondération & 0,842 & 0,766 & 0,611 & 0,750 \\
+     & SMOTE & 0,844 & 0,763 & 0,624 & 0,757 \\
+     & ADASYN & 0,844 & 0,740 & 0,624 & 0,753 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le tableau~\ref{tab:desequilibre} contient un enseignement important. Les quatre stratégies donnent \emph{la même AUC} : elles ne rendent pas le modèle meilleur pour classer les clients. Ce qu'elles changent, c'est le compromis entre rappel et précision au seuil de 0,5. Sans correction, 44 \% des Prudents sont manqués ; avec n'importe laquelle des trois corrections, plus de 80 \% sont repérés. Les trois corrections ont donc un effet comparable à un simple \emph{déplacement du seuil de décision}. Nous gardons la pondération des classes, la solution la plus simple, qui ne crée aucune donnée artificielle.
+
+\subsection{Seuil de décision}
+
+Puisque le seuil est le vrai levier, nous le choisissons explicitement, sur la validation, avec une règle métier : exiger un rappel d'au moins 80 \% sur les Prudents, puis maximiser l'\emph{accuracy} équilibrée. Le seuil obtenu est de \textbf{0,53} (figure~\ref{fig:seuil}).
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.62\textwidth]{07b_profil_seuil.png}
+  \caption{Choix du seuil sur la validation : rappel des Prudents et \emph{accuracy} équilibrée selon le seuil appliqué à la probabilité d'être prudent.}
+  \label{fig:seuil}
+\end{figure}
+
+Pourquoi ne pas viser 90 ou 95 \% de rappel, pour plus de sécurité ? Le tableau~\ref{tab:seuils} montre le prix à payer. À 90 \%, 55 \% des clients seraient classés Prudents, alors qu'ils ne sont qu'un tiers ; à 95 \%, 62 \% des clients non prudents le seraient à tort. Le modèle perdrait alors son pouvoir de discrimination et imposerait des portefeuilles trop défensifs à une majorité de clients. Le niveau de 80 \% est un compromis assumé, d'autant que le modèle n'est qu'une des deux sécurités du dispositif.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Compromis selon le rappel exigé (validation).}
+  \label{tab:seuils}
+  \begin{tabular}{@{}r r r r r@{}}
+    \toprule
+    \shortstack[r]{\textbf{Rappel}\\\textbf{visé}} & \textbf{Seuil} & \shortstack[r]{\textbf{Précision}\\\textbf{Prudent}} & \shortstack[r]{\textbf{Clients classés}\\\textbf{Prudents}} & \shortstack[r]{\textbf{Non-prudents}\\\textbf{classés Prudents}} \\
+    \midrule
+    80 \% & 0,53 & 64 \% & 40 \% & 21 \% \\
+    85 \% & 0,46 & 59 \% & 46 \% & 28 \% \\
+    90 \% & 0,35 & 52 \% & 55 \% & 39 \% \\
+    95 \% & 0,20 & 42 \% & 73 \% & 62 \% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Diagnostic biais-variance}
+
+La courbe d'apprentissage (en annexe, figure~\ref{fig:profil_courbe}) trace l'AUC sur l'entraînement et en validation croisée quand la taille de l'entraînement augmente. Les deux courbes se rejoignent : l'écart final n'est que de 0,012. Le modèle ne surapprend pas. Ajouter des données n'apporterait presque rien ; pour progresser, il faudrait de \emph{meilleures variables}, notamment des informations psychologiques que l'enquête ne contient pas. Nous sommes dans un régime de biais, que la simplicité du modèle ne fait que refléter : la tolérance au risque n'est qu'en partie déterminée par la situation financière.
+
+\subsection{Évaluation sur le test et validation externe}
+
+Le modèle retenu est ré-entraîné sur l'entraînement et la validation réunis, avec les hyperparamètres et le seuil choisis, puis évalué une seule fois sur le test (tableau~\ref{tab:profil_test}).
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Évaluation unique sur le test (SCF 2022) et validation externe sur une autre vague de l'enquête (SCF 2019), sans ré-entraînement ni nouveau seuil.}
+  \label{tab:profil_test}
+  \begin{tabular}{@{}l r r r r r@{}}
+    \toprule
+    \textbf{Jeu évalué} & \textbf{AUC} & \textbf{F1 macro} & \shortstack[r]{\textbf{Accuracy}\\\textbf{équilibrée}} & \shortstack[r]{\textbf{Précision}\\\textbf{Prudent}} & \shortstack[r]{\textbf{Rappel}\\\textbf{Prudent}} \\
+    \midrule
+    Test SCF 2022 (seuil 0,53)              & 0,867 & 0,776 & 0,797 & 0,639 & 0,804 \\
+    Test SCF 2022, pondéré                  & 0,823 & 0,722 & 0,745 & 0,590 & 0,804 \\
+    Validation externe SCF 2019             & 0,844 & 0,746 & 0,761 & 0,611 & 0,740 \\
+    Validation externe SCF 2019, pondérée   & 0,812 & 0,722 & 0,734 & 0,622 & 0,769 \\
+    Classe majoritaire (test 2022)          & 0,500 & 0,406 & 0,500 & 0     & 0     \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.92\textwidth]{07_profil_confusion_roc.png}
+  \caption{Matrice de confusion normalisée et courbe ROC sur le test.}
+  \label{fig:profil_test}
+\end{figure}
+
+Sur le test, l'AUC atteint 0,867 et le rappel des Prudents 80 \%, conforme à l'objectif fixé sur la validation : le seuil se transpose bien. Quatre Prudents sur cinq sont repérés, et un client non prudent sur cinq est classé Prudent par excès de précaution (figure~\ref{fig:profil_test}).
+
+Deux tests de robustesse complètent cette évaluation. Les lignes \og pondérées \fg{} appliquent les poids de l'enquête, qui rendent l'échantillon représentatif de la population américaine : l'AUC baisse (0,823), car l'enquête sur-représente volontairement les ménages très aisés, faciles à classer. C'est la performance à attendre sur la population générale. Surtout, la \textbf{validation externe} applique le modèle, sans aucune modification, aux ménages de l'enquête 2019, un échantillon indépendant interrogé avant la COVID (montants convertis en dollars de 2022 avec l'indice des prix). L'AUC n'y perd que 0,02 point (0,844) : le modèle a appris une relation stable dans le temps, et non les particularités d'une vague d'enquête.
+
+\paragraph{Analyse des erreurs.} Le rappel des Prudents varie selon l'âge : 87 \% après 65 ans, 83 \% entre 35 et 50 ans, mais seulement 67 \% avant 35 ans. Les jeunes prudents ont souvent une situation financière modeste, mais normale pour leur âge, que le modèle distingue mal de celle des jeunes non prudents. C'est une limite à connaître, et un argument de plus pour croiser le modèle avec le questionnaire.
+
+\subsection{Explicabilité}
+\label{sec:profil_shap}
+
+Nous expliquons le modèle à trois niveaux, comme le propose le cours :
+\begin{enumerate}
+  \item \textbf{Interprétabilité intrinsèque} : les coefficients de la régression logistique indiquent le sens et la force de l'effet de chaque variable standardisée.
+  \item \textbf{Explicabilité globale} : l'importance par permutation (baisse de l'AUC quand on mélange une variable) et la valeur absolue moyenne des contributions SHAP~\cite{lundberg2017}.
+  \item \textbf{Explicabilité locale} : la décomposition SHAP d'une prédiction individuelle,
+  \begin{equation}
+    f(x) = \underbrace{\mathbb{E}[f(X)]}_{\text{valeur de base}} + \sum_j \phi_j(x).
+  \end{equation}
+  Pour un modèle linéaire, la contribution de la variable $j$ a une forme exacte, $\phi_j(x) = \beta_j\,(x_j - \mathbb{E}[x_j])$, en unités de log-odds. C'est cette décomposition qui est affichée au client dans l'application.
+\end{enumerate}
+
+Les variables les plus influentes sont, dans l'ordre : le total des actifs, l'âge, la durée des études, le fait de posséder une entreprise, le score au quiz de culture financière, l'existence d'une épargne de précaution et le revenu habituel. Un patrimoine et un revenu faibles, moins d'études et moins de culture financière rendent plus prudent. C'est exactement la notion de \emph{capacité à supporter des pertes} : le modèle a appris une logique économique, pas un artefact des données. La figure~\ref{fig:shap_local} montre l'explication de deux ménages du test.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{09b_profil_shap_local.png}
+  \caption{Explications SHAP locales de deux ménages du test. En rouge, les variables qui poussent vers \og Prudent \fg{} ; en vert, celles qui en éloignent.}
+  \label{fig:shap_local}
+\end{figure}
+
+\subsection{Décision finale : le plus prudent des deux}
+
+Le modèle ne décide pas seul. Le client remplit aussi un \textbf{questionnaire noté} de sept questions, inspiré des questionnaires réglementaires européens (MiFID~II) et de la littérature sur la mesure de la tolérance au risque~\cite{grable1999} : horizon de placement, objectif, réaction à une baisse de 20 \%, perte annuelle acceptable, expérience, part du patrimoine placée, stabilité des revenus. Chaque réponse rapporte de 0 à 3 points ; un score d'au moins 8 sur 21 donne le profil Équilibré, d'au moins 15 le profil Dynamique. Certaines réponses plafonnent le profil quel que soit le score : un horizon de moins de deux ans, une perte acceptable de moins de 5 \% ou l'intention de tout vendre après une baisse imposent le profil Prudent ; un horizon de deux à cinq ans interdit le profil Dynamique.
+
+La règle de décision combine les deux sources :
+\begin{center}
+  \emph{profil retenu} $=$ le plus prudent entre la \emph{tolérance déclarée} (questionnaire) et la \emph{capacité estimée} (modèle).
+\end{center}
+Si le client se déclare Équilibré ou Dynamique alors que le modèle le juge proche des ménages prudents, le profil est ramené à Prudent et une \textbf{alerte d'incohérence} est affichée pour le conseiller, qui garde le dernier mot. Ce principe de l'humain dans la boucle nous paraît indispensable : la tolérance au risque est en partie psychologique, et un modèle d'AUC 0,87 se trompe encore sur un client sur cinq.

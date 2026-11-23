@@ -36,6 +36,7 @@
 \usepackage[backend=bibtex,style=numeric,sorting=nyt,maxbibnames=4]{biblatex}
 \renewcommand*{\mkbibnamefamily}[1]{\textsc{#1}}
 \addbibresource{references.bib}
+\catcode"200B=9 % espace de largeur nulle (biblatex en français) : ignorée
 
 % ---------------------------------------------------------------- Informations du rapport
 \newcommand{\titre}{Assistant multi-agent pour la sélection intelligente de portefeuilles financiers}
