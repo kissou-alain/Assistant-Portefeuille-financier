@@ -12,7 +12,7 @@ Toutes les données sont **réelles** et proviennent de sources publiques offici
 | `scfp2022.csv` | Federal Reserve Board, Survey of Consumer Finances 2022, *Summary Extract Public Data* : https://www.federalreserve.gov/econres/scfindex.htm | Une ligne par implicate (5 par ménage). Variables utilisées : YY1, WGT, AGE, KIDS, INCOME, NETWORTH, ASSET, DEBT, LEVRATIO, DEBT2INC, KNOWL, FINLIT, HHSEX, EDCL, MARRIED, OCCAT1, LIFECL, HOUSECL, SAVED, NOFINRISK, YESFINRISK. |
 
 ### Univers d'investissement (25 actifs)
-Actions : SPY, QQQ, IWM, EFA, EEM · Secteurs US : XLK, XLF, XLV, XLE, XLY, XLP, XLI, XLU · Immobilier : VNQ · Obligations : SHY, IEF, TLT, LQD, HYG, TIP, EMB · Matières premières : GLD, SLV, DBC · Crypto : BTC-USD.
+Actions : SPY, QQQ, IWM, EFA, EEM · Secteurs US : XLK, XLF, XLV, XLE, XLY, XLP, XLI, XLU · Immobilier : VNQ · Monétaire : SHY · Obligations : IEF, TLT, LQD, HYG, TIP, EMB · Matières premières : GLD, SLV, DBC · Crypto : BTC-USD.
 
 ## 2. Traitements appliqués
 
@@ -31,7 +31,7 @@ Actions : SPY, QQQ, IWM, EFA, EEM · Secteurs US : XLK, XLF, XLV, XLE, XLY, XLP,
 - Variables dérivées : inflation sur 12 mois, variation du chômage sur 3 mois, croissance de la production industrielle, variation du VIX sur 21 jours, des taux et du spread de crédit sur 63 jours.
 
 ### SCF (`prepare_scf`)
-- Cible : `NOFINRISK=1` → Prudent ; `YESFINRISK=1` → Dynamique ; sinon → Équilibré.
+- Cible (formulation binaire, retenue) : `NOFINRISK=1` → Prudent ; sinon → Non prudent. La formulation à 3 classes (`YESFINRISK=1` → Dynamique, sinon Équilibré) est conservée pour comparaison : la classe Dynamique (≈ 5 % des ménages) n'est pas séparable avec ces variables. Le passage Équilibré → Dynamique est décidé par le questionnaire noté.
 - Exclusion des variables de composition du portefeuille financier, qui sont des conséquences de la tolérance au risque (fuite de la cible).
 - Les codes négatifs de non-réponse sont convertis en valeurs manquantes. Les variables catégorielles sont converties en texte.
 - Découpage **par ménage** (`YY1`), car les 5 implicates d'un ménage sont quasi identiques.
