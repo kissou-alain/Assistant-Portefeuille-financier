@@ -120,4 +120,14 @@ RESULTS["significativite"] = sig
 display(sig)
 chrono("7b. Backtest : résultats et significativité")
 """),
+md(r"""
+**Lecture**
+- **Adéquation aux profils** : le risque réalisé croît bien du profil Prudent (≈ 6 %) au profil Dynamique (≈ 13 %), dans le budget de chaque profil. C'est la première mission du système, et elle est remplie.
+- **Profil Dynamique** : le multi-agent fait aussi bien que sa référence stratégique et que le 1/N à volatilité cible (écarts de Sharpe non significatifs).
+- **Profil Équilibré** : légèrement en dessous de la référence stratégique et du 1/N à volatilité cible, sans que l'écart soit significatif.
+- **Profil Prudent** : c'est le point faible. Il fait **significativement moins bien** que le 1/N à volatilité cible et que la parité de risque. Sur 2022-2026, les portefeuilles prudents qui détenaient davantage d'actions diversifiées et moins d'obligations ont mieux traversé la hausse des taux. La contrainte de part défensive minimale (50 %), même élargie au monétaire, a pesé.
+- Les écarts significatifs **favorables** au multi-agent (face à HRP) sont à relativiser : HRP est nettement moins risqué (≈ 4,5 % de volatilité), donc la comparaison n'est pas à risque égal.
+
+**En résumé** : sur cette période, l'optimisation n'ajoute pas de rendement par rapport à des règles simples de même risque, ce qui est cohérent avec la littérature (DeMiguel et al., 2009). La valeur du système tient à l'adéquation au profil, au contrôle du risque et à l'explication des recommandations.
+"""),
 ]

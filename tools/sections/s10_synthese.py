@@ -60,9 +60,12 @@ md(r"""
 
 **Ce que montrent les résultats.**
 1. **Agent Profil** : la régression logistique, le modèle le plus simple, fait aussi bien que les ensembles d'arbres ; ses performances se maintiennent sur une autre vague de l'enquête (2019). La capacité à supporter des pertes s'explique bien par la situation financière.
-2. **Agent Prévision** : malgré 13 modèles, une ACP et des variables de régime, **aucun modèle ne bat de façon significative la prévision nulle** au test de Diebold-Mariano. Les signaux appris sur 2011-2019 (prime des actifs risqués) ont disparu après 2021 : c'est une **dérive des données**. Le garde-fou décidé à l'avance a correctement empêché ces prévisions d'influencer l'allocation.
-3. **Agent Régime** : les régimes repèrent bien le **risque** à venir (volatilité future plus élevée en régime Stress), mais pas la **direction** du marché ; réduire l'exposition en régime de stress n'a pas été retenu sur la validation.
-4. **Allocation et renforcement** : ni l'optimiseur multi-agent ni l'agent PPO ne battent de façon significative les références simples de même risque sur 2022-2026, en particulier pour le profil Prudent. La valeur du système tient à l'**adéquation au profil**, au **contrôle du risque** et à l'**explicabilité** des recommandations, non à une surperformance.
+2. **Agent Prévision** : malgré 13 modèles, une ACP et des variables de régime, **aucun modèle ne bat de façon significative la prévision nulle** au test de Diebold-Mariano, ni sur 2013-2021 ni sur le test. Le signal le plus fort de 2011-2021, la prime des actifs risqués, s'est retourné en 2022 : c'est une **dérive des données**. Le garde-fou décidé à l'avance a correctement empêché ces prévisions d'influencer l'allocation. La comparaison des trois méthodes d'évaluation montre aussi qu'un **hold-out unique aurait été trompeur**.
+3. **Agent Régime** : les régimes repèrent bien le **risque** à venir (volatilité future plus élevée en régime Stress), mais pas la **direction** du marché ; réduire l'exposition en régime de stress n'a pas été retenu sur la validation. L'**agent Alerte** détecte toutes les crises connues.
+4. **Allocation** : le risque réalisé respecte le budget de chaque profil. Pour les profils Équilibré et Dynamique, le multi-agent fait jeu égal avec les références simples de même risque ; pour le profil Prudent, il fait significativement moins bien que le 1/N et la parité de risque à volatilité cible.
+5. **Renforcement** : l'agent PPO, prometteur sur la validation, ne se généralise pas au test (Sharpe négatif, significativement moins bon que les références) : surapprentissage dû au faible nombre de mois d'entraînement.
+
+La valeur du système tient donc à l'**adéquation au profil**, au **contrôle du risque** et à l'**explicabilité** des recommandations, non à une surperformance.
 
 Ces conclusions sont **cohérentes avec la littérature** sur l'efficience des marchés (DeMiguel et al., 2009 : la stratégie 1/N est difficile à battre hors échantillon).
 

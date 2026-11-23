@@ -73,7 +73,7 @@ pd.set_option("display.float_format", lambda x: f"{x:,.4f}")
 pd.set_option("display.max_columns", 30)
 np.random.seed(RANDOM_STATE)
 
-QUICK_RUN = True     # True : mise au point rapide | False : résultats finaux du rapport
+QUICK_RUN = False    # True : mise au point rapide | False : résultats finaux du rapport
 N_ITER = 3 if QUICK_RUN else 10   # combinaisons d'hyperparamètres testées par modèle (recherche aléatoire)
 N_JOBS = -1
 RESULTS = {}         # tableaux collectés pour la synthèse finale

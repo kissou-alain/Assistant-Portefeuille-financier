@@ -40,6 +40,8 @@ savefig("11_prevision_test")
 plt.show()
 """),
 md(r"""
+**Lecture** : sur le test, le modèle retenu (moyenne de Ridge, de l'arbre de décision et de la forêt aléatoire) obtient une MSE **identique** à celle de la prévision nulle (R² ≈ 0, DM non significatif), même s'il garde un classement des actifs légèrement informatif (IC ≈ 0,10). La baseline « moyenne par actif », la meilleure sur 2013-2021, devient **nettement moins bonne** que la prévision nulle (R² ≈ −10 %) : la prime de classe d'actifs s'est retournée en 2022 (actions et obligations ont baissé ensemble). C'est la **dérive des données** annoncée en 4.3. Le garde-fou de 4.10, décidé avant le test, a donc eu raison de ne pas laisser ces prévisions guider l'allocation.
+
 ### 4.12 Interprétabilité de l'agent Prévision (cours 1)
 1. **Interprétabilité intrinsèque** : coefficients du modèle Ridge (variables standardisées, donc comparables entre elles).
 2. **Explicabilité globale** : importance par permutation sur le test (hausse de la MSE quand on mélange une variable) et valeurs SHAP moyennes.

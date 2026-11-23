@@ -47,6 +47,8 @@ print("DM > 0 et p < 0,05 : la version AVEC les probabilités de régime est mei
 gamma_tab
 """),
 md(r"""
+**Lecture** : les probabilités de régime n'apportent **aucune amélioration significative** (p > 0,05 dans tous les cas). Pour un arbre de décision peu profond, les prévisions sont même strictement identiques (DM non calculable) : l'arbre n'utilise aucune des trois nouvelles variables. L'information du régime est déjà contenue dans les variables de volatilité et le VIX. Résultat négatif, mais instructif : le GMM sert à décrire le marché et à gérer le risque, pas à prévoir les rendements relatifs.
+
 ### 5.6 Agent Alerte : détection d'anomalies (cours 1 et 2)
 Une **anomalie** est une observation rare qui se distingue nettement de la majorité des données. Ici, une **journée de marché anormale** (krach, choc de liquidité). Deux usages dans le système : (i) **alerter** le conseiller et le client, (ii) **contrôler la qualité** des données téléchargées.
 

@@ -115,5 +115,7 @@ chrono("8. Apprentissage par renforcement (PPO)")
 """),
 md(r"""
 **Règle de décision (fixée à l'avance)** : l'agent PPO ne remplace l'optimiseur classique dans l'application que s'il le bat de façon **significative** (intervalle de confiance du bootstrap entièrement au-dessus de 0) pour un profil. Dans le cas contraire, il reste une **démonstration** de la méthode, et l'application garde l'agent Allocation fondé sur l'optimisation moyenne-variance, plus stable et plus facile à expliquer.
+
+**Lecture** : l'agent PPO obtient de bons résultats sur la validation 2020-2021, mais ils ne se maintiennent pas sur le test : son ratio de Sharpe est négatif pour les trois profils. Il fait **significativement moins bien** que le 1/N à volatilité cible pour les trois profils, et que le multi-agent et la référence stratégique pour le profil Dynamique. Sa volatilité dépasse aussi la cible du profil, puisque le budget de risque n'est que pénalisé. C'est le symptôme classique d'un **surapprentissage** : environ 108 mois d'entraînement ne suffisent pas pour apprendre une politique robuste à un changement de contexte (hausse des taux de 2022). Conformément à la règle, l'application conserve l'optimiseur classique.
 """),
 ]

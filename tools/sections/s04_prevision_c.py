@@ -34,6 +34,11 @@ RESULTS["prevision_trois_evaluations"] = three_tab
 three_tab[["MSE", "R² hors échantillon", "IC moyen", "écart-type IC", "nb plis"]]
 """),
 md(r"""
+**Lecture (grille du cours)** :
+- **Le hold-out seul était trop optimiste** : tous les modèles ont un R² positif sur la validation 2020-2021, mais un R² **négatif ou nul** en validation croisée. Leur IC chute aussi (de 0,16 à environ 0,04 pour Ridge). Un découpage unique, sur une période favorable, aurait fait croire à un modèle prédictif.
+- **Expanding meilleur que rolling** pour tous les modèles : l'historique long apporte de l'information utile ; une mémoire courte (fenêtre glissante) dégrade la prévision.
+- Les écarts entre plis sont importants : les modèles sont **instables** d'une période à l'autre.
+
 ### 4.9 Test de Diebold-Mariano (cours 2)
 Pour affirmer qu'un modèle est **meilleur** qu'un autre, il ne suffit pas d'une MSE un peu plus faible : il faut que l'écart soit **statistiquement significatif**.
 
@@ -86,6 +91,8 @@ print(f"(b) Prévisions hors pli : {y_oof.index.get_level_values('date').nunique
 dm_oof.style.format("{:.4f}").background_gradient(subset=["p vs nulle"], cmap="RdYlGn_r", vmin=0, vmax=0.2)
 """),
 md(r"""
+**Lecture** : sur les ~400 dates hors pli, **aucun modèle ne bat la prévision nulle** de façon significative (meilleure p-valeur ≈ 0,4). Certains font même significativement moins bien (SVR face à la prévision nulle ; régression linéaire non régularisée face à la moyenne par actif). La baseline « moyenne par actif » a l'IC le plus élevé et le plus significatif (≈ 0,12, t ≈ 3,9) : le signal le plus robuste de 2013-2021 est la **prime de classe d'actifs** (actions > obligations), pas un signal de sélection appris par un modèle.
+
 ### 4.10 Choix du modèle (règle fixée avant de voir les résultats)
 1. **Critère** : la MSE hors pli sur 2013-2021, plus fiable que la seule validation 2020-2021 (quatre fois plus de dates).
 2. **Garde-fou** : l'agent Prévision n'influence l'allocation que si le modèle retenu bat la **prévision nulle** au test de Diebold-Mariano (DM > 0, p < 0,05). Sinon, son poids est mis à zéro ($\alpha = 0$) et l'allocation repose uniquement sur le risque et l'allocation stratégique du profil. Le modèle reste affiché à titre d'information.

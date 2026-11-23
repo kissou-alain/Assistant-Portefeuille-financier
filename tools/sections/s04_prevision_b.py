@@ -76,6 +76,8 @@ fc_val
 md(r"""
 **Comment lire ce tableau** : un **R² hors échantillon** positif signifie que le modèle fait mieux que la prévision nulle en MSE. L'**IC** mesure la qualité du classement des actifs, qui est ce qui compte pour l'allocation. Le **spread Q5 − Q1 net** est le rendement annualisé d'un portefeuille qui achète les 20 % d'actifs les mieux notés et vend les 20 % les moins bien notés, après 10 points de base de coûts par transaction. Tous ces chiffres portent sur **une seule** période de validation de 2 ans (96 dates) : ils sont bruités, et la section 4.7 vérifiera leur stabilité.
 
+**Lecture** : sur la validation 2020-2021, le meilleur « modèle » est une **baseline**, la moyenne historique par actif (R² ≈ 8 %, IC ≈ 0,20). Les meilleurs modèles appris (Elastic Net, Ridge, XGBoost, forêt aléatoire) obtiennent un R² de 2 à 4 % et un IC de 0,13 à 0,16. Les modèles les plus flexibles (MLP, SVR, KNN, CatBoost) font moins bien que la prévision nulle : avec un signal aussi faible, la **variance** domine. La recherche d'hyperparamètres choisit d'ailleurs presque toujours la régularisation la plus forte.
+
 ### 4.6 Régularisation : chemin de λ et réduction de dimension (cours 1 et 2)
 **Chemin de régularisation du Lasso** : quand λ augmente, la pénalité $\lambda\lVert\beta\rVert_1$ prend le pas sur l'erreur et les coefficients sont progressivement ramenés **exactement à zéro**. Le Lasso fait ainsi une **sélection de variables**. La droite verticale indique le λ choisi par validation croisée.
 """),
@@ -106,6 +108,8 @@ n_nonzero = int((np.abs(fc_fitted["Lasso"].named_steps["m"].coef_) > 1e-10).sum(
 print(f"Lasso retenu : {n_nonzero} coefficients non nuls sur {len(names_t)}")
 """),
 md(r"""
+**Lecture** : la validation croisée retient un λ pour lequel **tous les coefficients du Lasso sont nuls** : le meilleur Lasso prédit 0 pour tous les actifs, c'est-à-dire la prévision nulle. Autrement dit, d'après la validation croisée, aucune variable n'apporte assez d'information pour justifier un coefficient non nul. C'est une illustration directe de la faiblesse du signal.
+
 **Modèles avec ACP dans le pipeline** : on reprend les deux meilleurs modèles appris de la validation, avec leurs hyperparamètres, en ajoutant une ACP qui conserve **90 % de la variance** (critère du cours). L'ACP est ajustée sur l'entraînement uniquement.
 """),
 code(r"""

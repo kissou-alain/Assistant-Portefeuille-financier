@@ -1,13 +1,13 @@
 {
   "date_donnees": "2026-11-20",
-  "mode_rapide": true,
+  "mode_rapide": false,
   "modele_profil": "Régression logistique",
   "seuil_profil": 0.53,
-  "modele_prevision": "Lasso",
+  "modele_prevision": "Ensemble (moyenne des 3 meilleurs)",
   "prevision_active": false,
-  "IC_hors_pli": 0.09739991146960457,
+  "IC_hors_pli": 0.0472333623090183,
   "IC_utilise": 0.0,
-  "penalite_rotation": 2.0,
+  "penalite_rotation": 0.5,
   "reduction_risque_regime": "aucune",
   "variables_prevision": [
     "ret_5",
@@ -43,21 +43,21 @@
     "asset_class"
   ],
   "top_variables": [
-    "ret_252",
-    "mom_12_1",
-    "ma200_gap",
-    "drawdown_252",
-    "asset_class",
-    "ret_63",
-    "ret_63_rank",
-    "ret_21",
+    "corr_63",
     "vol_63_rank",
-    "vol_21"
+    "VIX",
+    "drawdown_252",
+    "ret_21",
+    "INDPRO_yoy",
+    "rsi_14",
+    "vol_21",
+    "ret_21_rank",
+    "CPI_yoy"
   ],
   "alerte_min_votes": 3,
   "rl_graines_retenues": {
     "Prudent": 0,
     "Équilibré": 0,
-    "Dynamique": 0
+    "Dynamique": 1
   }
 }

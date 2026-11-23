@@ -33,7 +33,7 @@ RESULTS["profil_desequilibre"] = imb_tab
 imb_tab[["ROC-AUC", "Rappel Prudent", "Précision Prudent", "F1 macro", "Balanced acc."]]
 """),
 md(r"""
-**Lecture** : les 4 stratégies donnent presque la **même AUC**, car l'AUC mesure la qualité du **classement** des clients, indépendamment du seuil. Ce qui change, c'est le compromis rappel / précision au seuil de 0,5 : sans correction, environ 40 % des Prudents sont manqués ; avec les poids de classes, SMOTE ou ADASYN, le rappel des Prudents dépasse 75-80 %. Ces trois corrections ont un effet comparable à un simple **déplacement du seuil de décision** (3.8). On garde les poids de classes, la solution la plus simple, qui ne crée aucune donnée artificielle.
+**Lecture** : les 4 stratégies donnent presque la **même AUC**, car l'AUC mesure la qualité du **classement** des clients, indépendamment du seuil. Ce qui change, c'est le compromis rappel / précision au seuil de 0,5 : sans correction, plus de 40 % des Prudents sont manqués ; avec les poids de classes, SMOTE ou ADASYN, le rappel des Prudents dépasse 75-80 %. Ces trois corrections ont un effet comparable à un simple **déplacement du seuil de décision** (3.8). On garde les poids de classes, la solution la plus simple, qui ne crée aucune donnée artificielle.
 
 ### 3.7 Choix du modèle (règle fixée en 3.5)
 """),
