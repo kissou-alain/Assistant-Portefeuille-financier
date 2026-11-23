@@ -84,10 +84,11 @@ class GaussianAnomaly:
         return self
 
     def score(self, Z):
-        return -self.dist_.logpdf(Z)            # plus grand = plus anormal
+        return -np.atleast_1d(self.dist_.logpdf(Z))      # plus grand = plus anormal
 
     def predict(self, Z):
-        return self.dist_.logpdf(Z) <= self.eps_
+        # atleast_1d : scipy renvoie un scalaire quand on lui passe une seule observation
+        return np.atleast_1d(self.dist_.logpdf(Z)) <= self.eps_
 
 
 def fit_detectors(M_train: pd.DataFrame, contamination: float = 0.02) -> dict:

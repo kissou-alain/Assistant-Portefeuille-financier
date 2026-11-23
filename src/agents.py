@@ -169,7 +169,43 @@ class MarketRegimeAgent(BaseAgent):
 
 
 # ---------------------------------------------------------------------------
-# 3. Agent Prévision (classification supervisée de la surperformance)
+# 2 bis. Agent Alerte (détection d'anomalies sur la journée de marché)
+# ---------------------------------------------------------------------------
+class AlertAgent(BaseAgent):
+    """Vote de 4 détecteurs d'anomalies (gaussienne multivariée, Isolation Forest, LOF,
+    One-Class SVM) appris sur l'entraînement. Alerte si au moins `min_votes` sont d'accord."""
+    name = "Agent Alerte"
+
+    def __init__(self, bundle: dict, blackboard=None):
+        super().__init__(blackboard)
+        self.detectors = bundle["detectors"]
+        self.features = bundle["features"]
+        self.min_votes = bundle.get("min_votes", 3)
+
+    def run(self, market_row: pd.Series) -> dict:
+        x = pd.DataFrame([market_row.reindex(self.features).astype(float).values], columns=self.features)
+        if x.isna().any(axis=None):
+            res = {"alerte": False, "votes": 0, "detail": {}, "message": "Données incomplètes : alerte non évaluée"}
+            self.post("alert", res, res["message"])
+            return res
+        Z = self.detectors["scaler"].transform(x)
+        detail = {}
+        for name, det in self.detectors.items():
+            if name == "scaler":
+                continue
+            pred = det.predict(Z)[0]
+            detail[name] = bool(pred) if name == "Gaussienne multivariée" else bool(pred == -1)
+        votes = int(sum(detail.values()))
+        alerte = votes >= self.min_votes
+        msg = (f"⚠ Journée de marché anormale : {votes}/4 détecteurs en alerte" if alerte
+               else f"Marché sans anomalie détectée ({votes}/4 détecteurs)")
+        res = {"alerte": alerte, "votes": votes, "detail": detail, "message": msg}
+        self.post("alert", res, msg)
+        return res
+
+
+# ---------------------------------------------------------------------------
+# 3. Agent Prévision (régression du rendement excédentaire ou classification)
 # ---------------------------------------------------------------------------
 class ForecastAgent(BaseAgent):
     """Transforme les probabilités de surperformance en rendements espérés
@@ -205,6 +241,7 @@ class ForecastAgent(BaseAgent):
         out["alpha"] = self.ic * out["vol"] * out["z"]
         top = out["score"].sort_values(ascending=False).head(3).index.tolist()
         etat = "signal utilisé" if self.ic > 0 else "signal non utilisé (α = 0, garde-fou)"
+        self.post("forecast_active", self.ic > 0)
         self.post("forecast", out, f"Prévisions pour {len(out)} actifs – favoris : {', '.join(top)} – {etat}")
         return out
 
@@ -377,6 +414,10 @@ class ExplanationAgent(BaseAgent):
         lines.append(f"**Régime de marché** : {regime} (probabilité {rp.get(regime, 1):.0%}) – "
                      f"la cible de volatilité est ajustée d'un facteur "
                      f"{bb.get('vol_multiplier', REGIME_VOL_MULTIPLIER.get(regime, 1)):.2f}.")
+        al = bb.get("alert")
+        if al and al.get("alerte"):
+            lines.append(f"⚠️ **Agent Alerte** : {al['message']}. Le conseiller est invité à vérifier la situation "
+                         f"de marché avant d'investir.")
         exp = met["expositions"]
         lines.append("**Répartition par classe** : " + ", ".join(
             f"{k} {v:.0%}" for k, v in sorted(exp.items(), key=lambda x: -x[1]) if v > 0.005) + ".")
@@ -389,10 +430,11 @@ class ExplanationAgent(BaseAgent):
             if wt < 0.01:
                 break
             if fc is not None and t in fc.index and "prevision" in fc:
-                rg, pv = fc.loc[t, "rang"], fc.loc[t, "prevision"]
-                avis = "signal favorable" if rg > 0.7 else ("signal défavorable" if rg < 0.3 else "signal neutre")
-                lines.append(f"- {t} ({ASSET_NAME.get(t, t)}) : {wt:.1%} – rendement excédentaire prévu "
-                             f"{pv:+.1%} à 1 mois ({avis}).")
+                pv = fc.loc[t, "prevision"]
+                rank = int(fc["score"].rank(ascending=False)[t])
+                note = "" if bb.get("forecast_active") else " – indicatif, non utilisé dans l'allocation"
+                lines.append(f"- {t} ({ASSET_NAME.get(t, t)}) : {wt:.1%} – écart de rendement prévu vs la moyenne "
+                             f"des actifs : {pv:+.1%} à 1 mois (rang {rank}/{len(fc)}{note}).")
             else:
                 p = fc.loc[t, "proba"] if fc is not None and t in fc.index else np.nan
                 avis = "signal favorable" if p > 0.55 else ("signal défavorable" if p < 0.45 else "signal neutre")
@@ -416,10 +458,11 @@ class ExplanationAgent(BaseAgent):
 class PortfolioOrchestrator:
     def __init__(self, profile_bundle=None, regime_bundle=None, forecast_bundle=None,
                  lookback: int = LOOKBACK_COV, max_negotiation_rounds: int = 3,
-                 turnover_penalty: float = TURNOVER_PENALTY):
+                 turnover_penalty: float = TURNOVER_PENALTY, alert_bundle=None):
         self.profile_bundle = profile_bundle
         self.regime_bundle = regime_bundle
         self.forecast_bundle = forecast_bundle
+        self.alert_bundle = alert_bundle
         self.lookback = lookback
         self.max_rounds = max_negotiation_rounds
         self.turnover_penalty = (forecast_bundle or {}).get("turnover_penalty", turnover_penalty)
@@ -461,6 +504,10 @@ class PortfolioOrchestrator:
         else:
             regime = "Neutre"
             bb.post("Agent Régime", "regime", regime, "Régime par défaut")
+        # 2 bis) Alerte (information pour le conseiller ; ne modifie pas l'allocation)
+        alert = None
+        if self.alert_bundle is not None:
+            alert = AlertAgent(self.alert_bundle, bb).run(market_features.loc[:date].iloc[-1])
         mult = self.regime_mult.get(regime, 1.0)
         bb.post("Orchestrateur", "vol_multiplier", mult, f"Facteur de risque du régime {regime} : {mult:.2f}")
         target_vol = cons["target_vol"] * mult
@@ -512,6 +559,6 @@ class PortfolioOrchestrator:
                                 bb).run(date) if explain else ""
         return {"date": date, "profile": prof, "regime": regime, "weights": w,
                 "profile_proba": bb.get("profile_proba"), "regime_proba": bb.get("regime_proba"),
-                "profile_detail": bb.get("profile_detail"),
+                "profile_detail": bb.get("profile_detail"), "alert": alert,
                 "metrics": metrics, "explanation": text, "log": bb.log(),
                 "forecast": bb.get("forecast")}

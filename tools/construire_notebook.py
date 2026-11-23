@@ -45,11 +45,17 @@ def build(upto: int | None = None, skip: tuple = ()) -> nbformat.NotebookNode:
 
 
 def execute(path: Path, timeout: int = 5400) -> None:
-    from nbconvert.preprocessors import ExecutePreprocessor
+    from nbconvert.preprocessors import ExecutePreprocessor, CellExecutionError
     nb = nbformat.read(path, as_version=4)
     t0 = time.time()
-    ExecutePreprocessor(timeout=timeout, kernel_name="python3").preprocess(
-        nb, {"metadata": {"path": str(path.parent)}})
+    try:
+        ExecutePreprocessor(timeout=timeout, kernel_name="python3").preprocess(
+            nb, {"metadata": {"path": str(path.parent)}})
+    except CellExecutionError as exc:
+        nbformat.write(nb, path)          # on garde les sorties jusqu'à l'erreur, pour diagnostic
+        msg = str(exc)
+        print("ERREUR D'EXÉCUTION :", msg[-3000:])
+        sys.exit(1)
     nbformat.write(nb, path)
     print(f"Exécution terminée en {time.time() - t0:.0f} s")
 
