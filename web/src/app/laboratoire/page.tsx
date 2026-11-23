@@ -4,7 +4,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 import { Badge, Card, ErrorBox, Notice, PageSkeleton, PageTitle, Stat } from "@/components/ui";
 import { SimpleMarkdown } from "@/components/markdown";
-import { API_URL, num, pct } from "@/lib/api";
+import { assetUrl, num, pct } from "@/lib/api";
 import { useApi } from "@/lib/use-api";
 
 const TABS = ["Agent Profil", "Agent Prévision", "Agent Régime", "Figures", "Fiches des modèles"] as const;
@@ -100,7 +100,7 @@ export default function Laboratoire() {
           {figures.map((f: any) => (
             <button key={f.id} onClick={() => setZoom(f)} className="overflow-hidden rounded-2xl border border-border bg-surface text-left transition hover:shadow-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={`${API_URL}${f.url}`} alt={f.titre} className="h-48 w-full bg-white object-contain" />
+              <img src={assetUrl(f.url)} alt={f.titre} className="h-48 w-full bg-white object-contain" />
               <p className="p-3 text-sm font-medium">{f.titre}</p>
             </button>
           ))}
@@ -119,7 +119,7 @@ export default function Laboratoire() {
             <div className="mb-2 flex items-center justify-between"><Badge tone="x">{zoom.titre}</Badge>
               <button onClick={() => setZoom(null)} className="rounded-lg p-1 text-slate-600 hover:bg-slate-100"><X className="h-5 w-5" /></button></div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={`${API_URL}${zoom.url}`} alt={zoom.titre} className="h-auto w-full" />
+            <img src={assetUrl(zoom.url)} alt={zoom.titre} className="h-auto w-full" />
           </div>
         </div>
       )}

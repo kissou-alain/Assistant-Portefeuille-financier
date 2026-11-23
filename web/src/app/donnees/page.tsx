@@ -40,6 +40,16 @@ export default function Donnees() {
         <Stat label="Sauvegarde" value={d.sauvegarde_disponible ? "Disponible" : "Aucune"} hint="Version précédant la dernière mise à jour" />
       </div>
 
+      {d.mode === "en ligne" ? (
+        <Card title="Mise à jour automatique" subtitle="Version en ligne du site">
+          <ul className="space-y-1.5 text-sm text-text">
+            <li>• Chaque soir de semaine, après la clôture de la bourse de New York, une tâche automatique (GitHub Actions) télécharge les derniers cours et séries macroéconomiques.</li>
+            <li>• Elle relance ensuite le code Python du projet (mêmes modèles, non ré-entraînés) et republie le site.</li>
+            <li>• Votre profil est calculé directement dans votre navigateur : <b>aucune donnée saisie n'est envoyée</b> à un serveur.</li>
+            <li>• Les boutons de mise à jour manuelle et de retour en arrière sont disponibles dans la version locale (voir le README).</li>
+          </ul>
+        </Card>
+      ) : (
       <Card title="Mettre à jour les données" subtitle="Téléchargement des derniers jours uniquement – 30 secondes au maximum">
         <ul className="mb-4 space-y-1.5 text-sm text-text">
           <li>• Seuls les derniers jours de cotation sont téléchargés, puis raccordés à l'historique.</li>
@@ -65,6 +75,7 @@ export default function Donnees() {
           </div>
         )}
       </Card>
+      )}
 
       <Card title={<span className="flex items-center gap-2"><Database className="h-4 w-4 text-primary" /> Sources (données ouvertes)</span>}>
         <ul className="space-y-2 text-sm">

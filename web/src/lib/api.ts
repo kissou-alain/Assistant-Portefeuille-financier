@@ -1,9 +1,26 @@
-// Client de l'API FastAPI (port 8000 par défaut)
+// Client de l'API FastAPI (port 8000 par défaut) – ou mode « en ligne » (site statique, sans serveur Python)
+import { offlineApi } from "./offline";
+
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export class ApiError extends Error {}
 
+/** Vrai sur le site publié (Vercel) : pas d'API Python, réponses lues dans /donnees et profil calculé dans le navigateur */
+export const isOnline = () =>
+  !process.env.NEXT_PUBLIC_API_URL && typeof window !== "undefined"
+  && !["localhost", "127.0.0.1"].includes(window.location.hostname);
+
+/** Adresse d'un fichier servi par l'API en local (figures), par le site lui-même en ligne */
+export const assetUrl = (url: string) => (isOnline() ? url : `${API_URL}${url}`);
+
 export async function api<T = any>(path: string, body?: unknown): Promise<T> {
+  if (isOnline()) {
+    try {
+      return await offlineApi(path, body);
+    } catch (e) {
+      throw new ApiError(e instanceof Error ? e.message : String(e));
+    }
+  }
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
