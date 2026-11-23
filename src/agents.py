@@ -190,15 +190,22 @@ class ForecastAgent(BaseAgent):
 
     def run(self, panel_t: pd.DataFrame) -> pd.DataFrame:
         X = panel_t[self.features]
-        proba = self.pipeline.predict_proba(X)[:, 1]
         out = pd.DataFrame(index=panel_t.index)
-        out["proba"] = proba
-        sd = out["proba"].std()
-        out["z"] = (out["proba"] - out["proba"].mean()) / (sd if sd > 0 else 1.0)
+        if hasattr(self.pipeline, "predict_proba"):          # classifieur : probabilité de surperformance
+            score = self.pipeline.predict_proba(X)[:, 1]
+        else:                                                 # régresseur : rendement excédentaire prédit à 21 j
+            score = self.pipeline.predict(X)
+            out["prevision"] = score
+        out["score"] = score
+        out["rang"] = out["score"].rank(pct=True)             # position parmi les actifs (1 = le mieux noté)
+        out["proba"] = out["rang"] if "prevision" in out else out["score"]
+        sd = out["score"].std()
+        out["z"] = (out["score"] - out["score"].mean()) / (sd if sd > 0 else 1.0)
         out["vol"] = panel_t["vol_63"].clip(lower=0.01)
         out["alpha"] = self.ic * out["vol"] * out["z"]
-        top = out["proba"].sort_values(ascending=False).head(3).index.tolist()
-        self.post("forecast", out, f"Scores calculés pour {len(out)} actifs – favoris : {', '.join(top)}")
+        top = out["score"].sort_values(ascending=False).head(3).index.tolist()
+        etat = "signal utilisé" if self.ic > 0 else "signal non utilisé (α = 0, garde-fou)"
+        self.post("forecast", out, f"Prévisions pour {len(out)} actifs – favoris : {', '.join(top)} – {etat}")
         return out
 
 
@@ -381,10 +388,16 @@ class ExplanationAgent(BaseAgent):
         for t, wt in w.sort_values(ascending=False).head(6).items():
             if wt < 0.01:
                 break
-            p = fc.loc[t, "proba"] if fc is not None and t in fc.index else np.nan
-            avis = "signal favorable" if p > 0.55 else ("signal défavorable" if p < 0.45 else "signal neutre")
-            lines.append(f"- {t} ({ASSET_NAME.get(t, t)}) : {wt:.1%} – probabilité de "
-                         f"surperformance {p:.0%} ({avis}).")
+            if fc is not None and t in fc.index and "prevision" in fc:
+                rg, pv = fc.loc[t, "rang"], fc.loc[t, "prevision"]
+                avis = "signal favorable" if rg > 0.7 else ("signal défavorable" if rg < 0.3 else "signal neutre")
+                lines.append(f"- {t} ({ASSET_NAME.get(t, t)}) : {wt:.1%} – rendement excédentaire prévu "
+                             f"{pv:+.1%} à 1 mois ({avis}).")
+            else:
+                p = fc.loc[t, "proba"] if fc is not None and t in fc.index else np.nan
+                avis = "signal favorable" if p > 0.55 else ("signal défavorable" if p < 0.45 else "signal neutre")
+                lines.append(f"- {t} ({ASSET_NAME.get(t, t)}) : {wt:.1%} – probabilité de "
+                             f"surperformance {p:.0%} ({avis}).")
         if self.top_features:
             lines.append("")
             lines.append("**Variables les plus influentes du modèle de prévision** : "
