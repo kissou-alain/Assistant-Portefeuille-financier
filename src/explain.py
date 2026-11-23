@@ -71,13 +71,15 @@ def shap_values(pipe, explainer, X: pd.DataFrame, class_idx: int = 1, group: boo
     Xt = _transform(pre_steps, X)
     sv = explainer(Xt)
     vals = sv.values
-    if vals.ndim == 3:
+    base = np.asarray(sv.base_values)
+    if vals.ndim == 3:                       # une sortie par classe (ex. forêt aléatoire scikit-learn)
         vals = vals[:, :, class_idx]
+        base = base[..., class_idx] if base.ndim > 1 else base
+    elif class_idx == 0:                     # sortie unique = classe 1 (log-odds) : on inverse pour la classe 0
+        vals, base = -vals, -base
     df = pd.DataFrame(vals, columns=Xt.columns, index=X.index)
     if group:
         df = df.T.groupby([original_name(c, list(X.columns)) for c in df.columns]).sum().T
-    base = sv.base_values
-    base = np.asarray(base)[..., class_idx] if np.ndim(base) > 1 else np.asarray(base)
     df.attrs["base_value"] = float(np.mean(base))
     return df
 
