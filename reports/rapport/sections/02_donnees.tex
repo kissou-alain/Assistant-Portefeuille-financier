@@ -1,4 +1,153 @@
 \section{Données, prétraitement et prévention des fuites}
 \label{sec:donnees}
 
-À rédiger.
+Le cours le rappelle : des données de mauvaise qualité produisent de faux résultats, donc de mauvaises décisions. Cette section décrit les données utilisées, leur nettoyage, ce que l'analyse exploratoire nous a appris, et surtout le protocole qui garantit que l'évaluation n'utilise aucune information future.
+
+\subsection{Sources : uniquement des données ouvertes}
+
+Toutes les données sont réelles et publiques (tableau~\ref{tab:sources}). Elles sont téléchargées automatiquement puis mises en cache, si bien qu'une nouvelle exécution du notebook repart exactement des mêmes fichiers.
+
+\begin{table}[H]
+  \centering
+  \small
+  \caption{Sources de données et agents qui les utilisent.}
+  \label{tab:sources}
+  \begin{tabularx}{\textwidth}{@{}l L l L@{}}
+    \toprule
+    \textbf{Source} & \textbf{Contenu} & \textbf{Fréquence} & \textbf{Utilisée par} \\
+    \midrule
+    Yahoo Finance & Cours de clôture ajustés (dividendes, divisions) de 25 actifs, depuis 2010 & Quotidienne & Prévision, Régime, Alerte, Risque, Allocation \\
+    FRED (Fed de Saint-Louis) & Taux 3 mois, 2 ans, 10 ans ; pente de courbe ; spread de crédit Baa ; VIX ; inflation ; chômage ; production industrielle & Quotidienne ou mensuelle & Prévision, Régime \\
+    Survey of Consumer Finances 2022~\cite{bhutta2023} & 4\,595 ménages américains (× 5 imputations) : âge, revenus, patrimoine, dettes, études, culture financière, tolérance au risque déclarée & Enquête & Profil \\
+    Survey of Consumer Finances 2019 & Autre vague de la même enquête & Enquête & Validation externe du Profil \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+L'univers d'investissement compte 25 actifs cotés, choisis pour couvrir les grandes classes d'actifs à faible coût : 13 fonds d'actions (S\&P~500, Nasdaq~100, petites capitalisations, pays développés et émergents, 8 secteurs américains), 1 fonds immobilier, 1 fonds monétaire (bons du Trésor à 1-3 ans, SHY), 6 fonds obligataires (Trésor 7-10 ans et 20 ans et plus, entreprises \emph{investment grade} et \emph{high yield}, obligations indexées sur l'inflation, dette émergente), 3 de matières premières (or, argent, panier diversifié) et le Bitcoin. La liste complète figure en annexe (tableau~\ref{tab:univers}).
+
+Le choix de SHY comme poche monétaire mérite une remarque. Dans une première version, il était classé parmi les obligations, et le profil Prudent pouvait alors détenir beaucoup d'obligations longues, très sensibles aux taux. En le reclassant comme \og Monétaire \fg{} et en plafonnant les obligations longues, on obtient un profil Prudent plus conforme à la pratique.
+
+\subsection{Qualité et nettoyage des cours}
+
+Les données financières réelles posent des problèmes typiques, que nous avons diagnostiqués avant tout traitement :
+\begin{itemize}
+  \item \textbf{Calendriers différents.} Le Bitcoin cote 7 jours sur 7, les fonds seulement les jours ouvrés de la bourse de New York. Le fichier brut compte donc 5\,634 dates, dont seulement 4\,248 jours de bourse : les \og 24,6 \% de valeurs manquantes \fg{} des fonds sont en réalité des week-ends et jours fériés, pas des trous.
+  \item \textbf{Historiques de longueurs différentes.} Le Bitcoin n'est disponible qu'à partir du 17 septembre 2014 ; il n'entre dans l'univers qu'après un an d'historique.
+  \item \textbf{Valeurs manquantes ponctuelles et pics aberrants}, fréquents dans les données gratuites.
+\end{itemize}
+
+Le nettoyage applique cinq règles : tri et suppression des doublons ; alignement sur le calendrier de la bourse de New York ; suppression des prix nuls ou négatifs ; suppression des pics \og aller-retour \fg{} de plus de 40 \% en deux jours (hors Bitcoin) ; propagation de la dernière valeur connue sur cinq jours au plus. Le remplissage se fait \textbf{uniquement vers l'avant} : remplir vers l'arrière utiliserait un prix futur. Sur nos données, aucun prix négatif ni pic aberrant n'a été trouvé : les cours ajustés de Yahoo Finance sont propres pour ces fonds très liquides.
+
+\subsection{Rendements et valeurs extrêmes}
+
+Nous travaillons sur les rendements $r_t = P_t/P_{t-1}-1$, à peu près stationnaires, et non sur les prix, qui ne le sont pas. Une valeur extrême n'est pas forcément une erreur. Le z-score, méthode statistique de détection d'anomalies vue en cours, repère les rendements à plus de 6 écarts-types : on en trouve dans tous les actifs (11 pour les obligations \emph{high yield}, 8 pour le S\&P~500). Ce sont de vrais événements, comme la chute de $-10{,}9$~\% du S\&P~500 le 16 mars 2020. \textbf{Ils sont conservés} : ce sont précisément les risques que le système doit apprendre à gérer, et les supprimer rendrait le risque estimé trop optimiste.
+
+\subsection{Variables macroéconomiques sans fuite temporelle}
+
+Une donnée macroéconomique n'est utilisable qu'à sa \emph{date de publication}, pas à sa date de référence. L'inflation du mois de mars, par exemple, n'est connue qu'à la mi-avril. L'utiliser dès mars donnerait au modèle une information qui n'existait pas encore : c'est une fuite de données, invisible dans les métriques et fatale en conditions réelles. Nous avons donc décalé :
+\begin{itemize}
+  \item les séries quotidiennes (taux, VIX, spread de crédit) d'un jour ouvré ;
+  \item les séries mensuelles (inflation, chômage, production industrielle) jusqu'au 15 du mois suivant.
+\end{itemize}
+Nous en dérivons dix variables : niveau et variation sur 21 jours du VIX, pente de la courbe des taux, niveau et variation sur 63 jours du spread de crédit, variation sur 63 jours du taux à 10 ans, inflation sur 12 mois, niveau et variation sur 3 mois du chômage, croissance annuelle de la production industrielle.
+
+\subsection{Analyse exploratoire}
+
+Pour ne pas orienter la modélisation avec des informations de la période de test, les statistiques qui guident nos choix sont calculées sur la seule période d'entraînement, 2010-2019 (tableau~\ref{tab:stats_train}). Les graphiques de contexte couvrent toute la période.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Statistiques des rendements quotidiens sur la période d'entraînement (2010-2019 ; Bitcoin à partir de 2014). Rendement et volatilité annualisés. La normalité est rejetée pour tous les actifs (p-valeur de Jarque-Bera $<10^{-4}$).}
+  \label{tab:stats_train}
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}l l r r r r r@{}}
+    \toprule
+    \textbf{Actif} & \textbf{Classe} & \textbf{Rendement} & \textbf{Volatilité} & \textbf{Asymétrie} & \textbf{Kurtosis} & \textbf{Perte max.} \\
+    \midrule
+    SPY (S\&P 500)      & Actions            & 13,5 \% & 14,7 \% & $-0{,}43$ & 4,4 & $-19{,}3$ \% \\
+    QQQ (Nasdaq 100)    & Actions            & 17,8 \% & 17,3 \% & $-0{,}32$ & 3,1 & $-22{,}8$ \% \\
+    EEM (émergents)     & Actions            & 4,8 \%  & 21,1 \% & $-0{,}19$ & 2,9 & $-37{,}5$ \% \\
+    VNQ (immobilier)    & Immobilier         & 13,0 \% & 17,8 \% & $-0{,}16$ & 6,0 & $-22{,}6$ \% \\
+    SHY (Trésor 1-3 ans)& Monétaire          & 1,1 \%  & 0,9 \%  & $0{,}25$  & 2,4 & $-1{,}1$ \% \\
+    IEF (Trésor 7-10 ans)& Obligations       & 4,5 \%  & 6,0 \%  & $-0{,}13$ & 1,1 & $-9{,}1$ \% \\
+    TLT (Trésor 20 ans+)& Obligations        & 7,9 \%  & 13,7 \% & $-0{,}09$ & 1,6 & $-20{,}7$ \% \\
+    HYG (\emph{high yield}) & Obligations    & 6,2 \%  & 7,2 \%  & $-0{,}36$ & 8,5 & $-13{,}4$ \% \\
+    GLD (or)            & Mat. premières     & 3,8 \%  & 15,5 \% & $-0{,}47$ & 5,4 & $-45{,}6$ \% \\
+    DBC (panier)        & Mat. premières     & $-3{,}1$ \% & 15,7 \% & $-0{,}25$ & 2,2 & $-62{,}8$ \% \\
+    BTC-USD (Bitcoin)   & Crypto             & 78,3 \% & 72,4 \% & $0{,}32$  & 4,8 & $-83{,}0$ \% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{02_performances_cumulees.png}
+  \caption{Performance cumulée (base 100) des principales classes d'actifs et du Bitcoin (échelle logarithmique). Les lignes pointillées marquent le creux du krach de 2020 et celui du marché baissier de 2022.}
+  \label{fig:perf}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{04_faits_stylises.png}
+  \caption{Trois faits stylisés : corrélation glissante actions / obligations longues (à gauche), distribution des rendements du S\&P~500 comparée à une loi normale (au centre), autocorrélations des rendements et de leur valeur absolue (à droite).}
+  \label{fig:faits}
+\end{figure}
+
+L'analyse fait ressortir quatre \emph{faits stylisés}, bien connus en finance, qui ont chacun une conséquence directe sur nos choix de modélisation :
+\begin{enumerate}
+  \item \textbf{Queues épaisses.} Tous les actifs ont une kurtosis en excès positive (jusqu'à 8,5 pour les obligations \emph{high yield}) et une asymétrie le plus souvent négative : les fortes baisses sont plus fréquentes que ne le prévoit une loi normale (figure~\ref{fig:faits}, au centre). \emph{Conséquences} : mesurer le risque aussi par des quantiles historiques (VaR, CVaR), écrêter les variables extrêmes dans les pipelines, et tester des modèles robustes aux valeurs extrêmes comme les arbres.
+  \item \textbf{Diversification instable.} La corrélation entre actions et obligations longues, négative pendant toutes les années 2010, devient positive à partir de 2022 avec le choc d'inflation (figure~\ref{fig:faits}, à gauche) : les obligations ont alors baissé en même temps que les actions. \emph{Conséquence} : la matrice de covariance doit être réestimée en continu, sur une fenêtre glissante d'un an.
+  \item \textbf{Regroupement de volatilité.} Les rendements eux-mêmes ne sont presque pas autocorrélés, mais leurs valeurs absolues le sont fortement et durablement (figure~\ref{fig:faits}, à droite). Le \emph{niveau de risque} est donc prévisible, bien plus que la \emph{direction} des prix. \emph{Conséquences} : cela justifie un agent Régime, et laisse attendre un pouvoir prédictif faible pour l'agent Prévision. L'analyse exploratoire annonçait donc, dès le départ, le résultat de la section~\ref{sec:prevision}.
+  \item \textbf{Non-stationnarité des niveaux macroéconomiques.} La courbe des taux s'est inversée de 2022 à 2024, à un niveau jamais observé pendant l'entraînement. Un modèle qui utilise le \emph{niveau} de la pente de courbe extrapole alors hors de son domaine. \emph{Conséquence} : utiliser de préférence des variations et des logarithmes. Nous avons appris cette leçon à nos dépens : une version de l'agent Régime fondée sur des niveaux classait 91 \% de la période de test en \og Stress \fg{}.
+\end{enumerate}
+
+\subsection{Variables construites}
+
+Pour l'agent Prévision, nous construisons un \emph{panel} (date, actif) de 31 variables explicatives, toutes calculées avec des données passées uniquement :
+\begin{itemize}
+  \item 20 variables techniques par actif : rendements passés sur 5, 21, 63, 126 et 252 jours ; momentum 12-1 mois ; volatilités sur 21 et 63 jours et leur rapport ; perte depuis le plus haut sur un an ; écarts aux moyennes mobiles à 50 et 200 jours ; RSI ; asymétrie, bêta et corrélation au marché sur 63 jours ; rangs de l'actif parmi les 25 pour quatre de ces variables ;
+  \item les 10 variables macroéconomiques décrites plus haut ;
+  \item la classe d'actifs, en variable catégorielle.
+\end{itemize}
+La cible est le rendement de l'actif sur les 21 jours de bourse suivants, \emph{diminué de la moyenne des 25 actifs} à la même date. Cette cible \og relative \fg{} retire le mouvement d'ensemble du marché, qui ne sert à rien pour choisir entre les actifs. Pour l'agent Régime, cinq variables de marché suffisent : rendement et logarithme de la volatilité du S\&P~500 sur 21 jours, perte depuis le plus haut sur un an, logarithme du VIX, variation du spread de crédit sur 63 jours.
+
+Les données de l'enquête SCF, utilisées par l'agent Profil, sont présentées avec cet agent (section~\ref{sec:profil}).
+
+\subsection{Découpage temporel et protocole contre les fuites}
+
+Le découpage est chronologique (figure~\ref{fig:decoupage}) : entraînement jusqu'à fin 2019, validation sur 2020-2021 (qui contient le krach de la COVID), test de janvier 2022 à novembre 2026. La période de test, longue de près de cinq ans, couvre des situations variées : marché baissier de 2022, remontée des taux, reprise des actions.
+
+\begin{figure}[H]
+  \centering
+  \begin{tikzpicture}[font=\small, x=0.88cm]
+    \fill[blue!15]   (0,0) rectangle (10,0.7);
+    \fill[gray!60]   (10,0) rectangle (10.15,0.7);
+    \fill[orange!20] (10.15,0) rectangle (12,0.7);
+    \fill[gray!60]   (12,0) rectangle (12.15,0.7);
+    \fill[green!18]  (12.15,0) rectangle (16.9,0.7);
+    \node at (5,0.35) {Entraînement (2010-2019)};
+    \node[font=\footnotesize] at (11.07,0.35) {Validation};
+    \node at (14.65,0.35) {Test (2022 → 11/2026)};
+    \foreach \x/\l in {0/2010, 10/2020, 12/2022, 16.9/2026} \draw (\x,0) -- (\x,-0.15) node[below] {\l};
+    \draw[-latex, gray!70!black] (10.07,1.2) node[above, align=center] {purge de 35 jours} -- (10.07,0.75);
+    \draw[-latex, gray!70!black] (12.07,1.2) -- (12.07,0.75);
+  \end{tikzpicture}
+  \caption{Découpage chronologique des données de marché. Une purge de 35 jours sépare chaque période de la suivante, car la cible porte sur les 21 jours de bourse suivants.}
+  \label{fig:decoupage}
+\end{figure}
+
+La \textbf{purge} (ou \emph{embargo}) mérite une explication~\cite{lopezdeprado2018}. La cible d'une observation datée du 31 décembre 2019 est le rendement des 21 jours de bourse suivants, donc de janvier 2020 : elle chevauche la validation. Sans purge, le modèle s'entraînerait sur des étiquettes qui contiennent déjà le début de la période d'évaluation. Nous retirons donc 35 jours calendaires, soit 21 jours de bourse plus une marge, à chaque frontière.
+
+Au total, six règles empêchent les fuites de données :
+\begin{enumerate}
+  \item \textbf{Séparer avant de transformer.} Les jeux d'entraînement, de validation et de test sont découpés avant tout prétraitement : chronologiquement pour les marchés, \emph{par ménage} pour l'enquête SCF (les cinq imputations d'un même ménage restent du même côté).
+  \item \textbf{Validation croisée temporelle purgée.} Les hyperparamètres sont choisis par une validation croisée qui respecte l'ordre du temps (fenêtre croissante ou glissante, avec purge), jamais par une validation croisée mélangée qui ferait prédire le passé à partir du futur.
+  \item \textbf{Décalage des variables macroéconomiques} à leur date de publication réelle.
+  \item \textbf{Pipelines.} Imputation, écrêtage, standardisation, ACP et rééchantillonnage (SMOTE, ADASYN) sont placés dans des \texttt{Pipeline} scikit-learn~\cite{pedregosa2011}, ajustés sur l'entraînement uniquement, et donc ré-ajustés à chaque pli de validation croisée.
+  \item \textbf{Réglages sur la validation.} Modèles, seuils, paramètres de l'allocation et graine de l'agent de renforcement sont choisis sur la validation ; le test sert une seule fois.
+  \item \textbf{Backtest \emph{walk-forward}.} Chaque mois, le portefeuille est construit avec les seules données disponibles à cette date, et les coûts de transaction sont déduits.
+\end{enumerate}
+
+Nous devons signaler une limite à cette rigueur : la période de test avait déjà été consultée lors des versions précédentes du projet. Le protocole limite le risque que nos choix s'y soient adaptés, mais ne peut pas l'exclure complètement. C'est une raison supplémentaire de lire nos résultats avec prudence.
