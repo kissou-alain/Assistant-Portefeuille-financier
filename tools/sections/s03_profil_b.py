@@ -68,6 +68,19 @@ plt.legend()
 plt.title(f"Choix du seuil de décision sur la validation : {THRESH:.2f}")
 savefig("07b_profil_seuil")
 plt.show()
+
+# Compromis : que coûterait un rappel plus élevé ?
+rows_t = []
+for target in (0.80, 0.85, 0.90, 0.95):
+    t = grid_t[rec_t >= target].max()
+    pred = p_val >= t
+    rows_t.append({"rappel visé": target, "seuil": t, "rappel Prudent": recall_score(yv_prud, pred),
+                   "précision Prudent": precision_score(yv_prud, pred), "% clients classés Prudent": pred.mean(),
+                   "% non-prudents classés Prudent": pred[~yv_prud].mean()})
+display(pd.DataFrame(rows_t).set_index("rappel visé"))
+"""),
+md(r"""
+**Lecture du compromis** : exiger 90 % ou 95 % de rappel ferait classer « Prudent » plus de la moitié des clients (alors qu'ils ne sont qu'environ un tiers) : le modèle perdrait son pouvoir de discrimination et proposerait des portefeuilles trop défensifs à de nombreux clients. Le seuil de 80 % est conservé. Le modèle n'est d'ailleurs qu'une des deux sécurités : le questionnaire déclaratif et la validation par le conseiller complètent le dispositif.
 """),
 md(r"""
 ### 3.9 Diagnostic biais / variance : courbe d'apprentissage (cours 1)
