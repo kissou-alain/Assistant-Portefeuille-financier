@@ -1,14 +1,14 @@
 ,famille,hyperparamètres,durée (s)
 Régression linéaire (MCO),Linéaire,{},0.1
 Ridge,Linéaire régularisé,{'alpha': np.float64(10.0)},0.2
-Lasso,Linéaire régularisé,{'alpha': np.float64(1e-05)},2.2
-Elastic Net,Linéaire régularisé,"{'l1_ratio': 0.2, 'alpha': np.float64(1e-05)}",2.9
+Lasso,Linéaire régularisé,{'alpha': np.float64(1e-05)},2.4
+Elastic Net,Linéaire régularisé,"{'l1_ratio': 0.2, 'alpha': np.float64(1e-05)}",2.8
 KNN,Voisinage,"{'weights': 'uniform', 'n_neighbors': 50}",0.4
-SVR (noyau RBF),Noyau,"{'gamma': 'scale', 'epsilon': 0.02, 'C': 0.01}",0.3
+SVR (noyau RBF),Noyau,"{'gamma': 'scale', 'epsilon': 0.02, 'C': 0.01}",0.4
 Arbre de décision,Arbre,"{'min_samples_leaf': 200, 'max_depth': 2}",0.2
 Forêt aléatoire,Ensemble (bagging),"{'min_samples_leaf': 200, 'max_features': 0.3, 'max_depth': 3}",1.0
 Gradient Boosting,Ensemble (boosting),"{'min_samples_leaf': 200, 'max_leaf_nodes': 7, 'max_iter': 200, 'learning_rate': 0.02, 'l2_regularization': 1.0}",0.6
-MLP (Adam),Réseau de neurones,"{'learning_rate_init': 0.001, 'hidden_layer_sizes': (32,), 'alpha': 0.01}",4.0
-LightGBM,Ensemble (boosting),"{'reg_lambda': 1, 'num_leaves': 7, 'min_child_samples': 200, 'learning_rate': 0.01}",0.9
-XGBoost,Ensemble (boosting),"{'reg_lambda': 1, 'min_child_weight': 50, 'max_depth': 2, 'learning_rate': 0.01}",1.0
-CatBoost,Ensemble (boosting),"{'learning_rate': 0.02, 'l2_leaf_reg': 3, 'depth': 3}",3.3
+MLP (Adam),Réseau de neurones,"{'learning_rate_init': 0.001, 'hidden_layer_sizes': (32,), 'alpha': 0.01}",4.1
+LightGBM,Ensemble (boosting),"{'reg_lambda': 1, 'num_leaves': 7, 'min_child_samples': 200, 'learning_rate': 0.01}",0.7
+XGBoost,Ensemble (boosting),"{'reg_lambda': 1, 'min_child_weight': 50, 'max_depth': 2, 'learning_rate': 0.01}",0.8
+CatBoost,Ensemble (boosting),"{'learning_rate': 0.02, 'l2_leaf_reg': 3, 'depth': 3}",2.2
