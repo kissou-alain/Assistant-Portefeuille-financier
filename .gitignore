@@ -22,3 +22,4 @@ web/node_modules/
 web/.next/
 web/out/
 notebooks/_test_*.ipynb
+web_dev.log

@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+/* Mode sombre piloté par la classe .dark (next-themes) */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ------------------------------------------------------------------
+   Charte graphique : couleurs définies une seule fois, pour les deux modes
+   ------------------------------------------------------------------ */
+:root {
+  --bg: #f6f8fb;
+  --surface: #ffffff;
+  --surface-2: #f1f4f9;
+  --border: #e3e8ef;
+  --text: #0f172a;
+  --muted: #5b6b82;
+  --primary: #0f766e;        /* vert sarcelle : action principale */
+  --primary-soft: #ccfbf1;
+  --accent: #1e3a8a;         /* bleu nuit : titres, marque */
+  --success: #15803d;
+  --warning: #b45309;
+  --danger: #b91c1c;
+  --calme: #16a34a;
+  --neutre: #ca8a04;
+  --stress: #dc2626;
+  --chart-1: #0f766e;
+  --chart-2: #2563eb;
+  --chart-3: #9333ea;
+  --chart-4: #ea580c;
+  --chart-5: #64748b;
+  --chart-6: #db2777;
+}
+
+.dark {
+  --bg: #0b1220;
+  --surface: #111a2e;
+  --surface-2: #17223a;
+  --border: #24314d;
+  --text: #e6ecf5;
+  --muted: #93a3bd;
+  --primary: #2dd4bf;
+  --primary-soft: #134e4a;
+  --accent: #93c5fd;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
+  --calme: #4ade80;
+  --neutre: #facc15;
+  --stress: #f87171;
+  --chart-1: #2dd4bf;
+  --chart-2: #60a5fa;
+  --chart-3: #c084fc;
+  --chart-4: #fb923c;
+  --chart-5: #94a3b8;
+  --chart-6: #f472b6;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent: var(--accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-calme: var(--calme);
+  --color-neutre: var(--neutre);
+  --color-stress: var(--stress);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Chiffres alignés dans les tableaux */
+.tabular { font-variant-numeric: tabular-nums; }
