@@ -1,0 +1,46 @@
+# Mise à jour automatique de la version en ligne du site (gratuit pour un dépôt public).
+# Chaque soir de semaine, après la clôture de la bourse de New York :
+#   1. téléchargement des derniers cours (Yahoo Finance) et séries macro (FRED) ;
+#   2. ré-export des résultats (régime, alertes, portefeuilles…) avec les modèles entraînés par le notebook ;
+#   3. enregistrement dans le dépôt → Vercel republie automatiquement le site.
+# Les modèles ne sont PAS ré-entraînés (relancer le notebook pour cela).
+name: Mise à jour des données du site
+
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"      # 22 h 30 UTC, du lundi au vendredi
+  workflow_dispatch:             # lancement manuel possible depuis l'onglet « Actions » de GitHub
+
+permissions:
+  contents: write
+
+jobs:
+  mise-a-jour:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.10"
+          cache: pip
+          cache-dependency-path: requirements-api.txt
+
+      - name: Installation des dépendances
+        run: pip install -r requirements-api.txt
+
+      - name: Mise à jour des données et export du site
+        run: python tools/exporter_site.py --maj
+
+      - name: Enregistrement dans le dépôt (seulement si quelque chose a changé)
+        run: |
+          git config user.name "Mise à jour automatique"
+          git config user.email "actions@users.noreply.github.com"
+          git add data web/public/donnees web/public/figures
+          if git diff --cached --quiet; then
+            echo "Aucune nouvelle donnée."
+          else
+            git commit -m "Mise à jour automatique des données du site ($(date -u +%Y-%m-%d))"
+            git push
+          fi
