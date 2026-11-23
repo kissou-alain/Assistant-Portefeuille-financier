@@ -32,13 +32,13 @@ def load_cells(path: Path) -> list:
     return mod.CELLS
 
 
-def build(upto: int | None = None) -> nbformat.NotebookNode:
+def build(upto: int | None = None, skip: tuple = ()) -> nbformat.NotebookNode:
     nb = nbformat.v4.new_notebook()
     nb.metadata["kernelspec"] = {"name": "python3", "display_name": "Python 3", "language": "python"}
     nb.metadata["language_info"] = {"name": "python"}
     for f in sorted(SECTIONS.glob("s[0-9][0-9]_*.py")):
         num = int(f.name[1:3])
-        if upto is not None and num > upto:
+        if (upto is not None and num > upto) or num in skip:
             continue
         nb.cells.extend(load_cells(f))
     return nb
@@ -58,11 +58,12 @@ if __name__ == "__main__":
     sys.path.insert(0, str(SECTIONS))
     ap = argparse.ArgumentParser()
     ap.add_argument("--jusqua", type=int, default=None, help="dernière section incluse")
+    ap.add_argument("--sauf", type=int, nargs="*", default=[], help="sections à exclure (mise au point)")
     ap.add_argument("--executer", action="store_true")
     ap.add_argument("--sortie", type=str, default=str(OUT))
     a = ap.parse_args()
     out = Path(a.sortie)
-    nb = build(a.jusqua)
+    nb = build(a.jusqua, tuple(a.sauf))
     nbformat.write(nb, out)
     print(f"{len(nb.cells)} cellules écrites dans {out}")
     if a.executer:
