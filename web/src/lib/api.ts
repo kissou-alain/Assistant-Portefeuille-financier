@@ -12,7 +12,9 @@ export async function api<T = any>(path: string, body?: unknown): Promise<T> {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch {
-    throw new ApiError("L'API ne répond pas. Vérifiez qu'elle est lancée (start.ps1).");
+    throw new ApiError(API_URL.includes("localhost")
+      ? "L'API ne répond pas. Vérifiez qu'elle est lancée (start.ps1)."
+      : "Le serveur de calcul se réveille (hébergement gratuit mis en veille après 15 minutes d'inactivité). Patientez environ une minute puis cliquez sur « Réessayer ».");
   }
   if (!res.ok) {
     let detail = `Erreur ${res.status}`;

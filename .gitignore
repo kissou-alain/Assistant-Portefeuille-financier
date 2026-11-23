@@ -6,20 +6,16 @@ venv/
 .DS_Store
 *.tmp
 catboost_info/
+web_dev.log
+notebooks/_test_*.ipynb
 
-# Données volumineuses : régénérées par `python -m src.data_download` et par le notebook
-data/raw/*.csv
-data/processed/*.csv
-data/processed/*.csv.gz
+# Les données brutes, les données préparées et les modèles entraînés SONT versionnés :
+# le dépôt est utilisable directement après un clone (≈ 100 Mo).
+# Seule la sauvegarde locale créée par la mise à jour des données est exclue (doublon).
 data/backup/
-
-# Modèles entraînés : régénérés par le notebook
-models/*.joblib
-models/*.zip
 
 # Application web (Next.js)
 web/node_modules/
 web/.next/
 web/out/
-notebooks/_test_*.ipynb
-web_dev.log
+web/.vercel/

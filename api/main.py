@@ -7,6 +7,7 @@ Documentation interactive : http://localhost:8000/docs
 """
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 from typing import Optional
 
@@ -25,7 +26,11 @@ async def lifespan(_app):
 
 app = FastAPI(title="Assistant multi-agent de portefeuille", version="2.0", lifespan=lifespan,
               description="Agents Profil, Régime, Alerte, Prévision, Risque, Allocation et Explication. " + sv.DISCLAIMER)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+# Origines autorisées : l'interface locale, les adresses données par la variable ALLOWED_ORIGINS,
+# et toute interface déployée sur Vercel (*.vercel.app)
+_origins = ["http://localhost:3000", "http://127.0.0.1:3000"] + \
+    [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+app.add_middleware(CORSMiddleware, allow_origins=_origins, allow_origin_regex=r"https://.*\.vercel\.app",
                    allow_methods=["*"], allow_headers=["*"])
 app.mount("/figures", StaticFiles(directory=str(sv.FIG_DIR)), name="figures")
 

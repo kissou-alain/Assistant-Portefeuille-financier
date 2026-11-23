@@ -1,0 +1,16 @@
+# Dépendances de l'API seule (déploiement en ligne sur Render).
+# Versions EXACTES de l'environnement d'entraînement : les modèles enregistrés (joblib)
+# doivent être rechargés avec les mêmes versions de scikit-learn, numpy et pandas.
+# Le notebook complet utilise requirements.txt.
+numpy==2.5.5
+pandas==3.1.1
+scipy==1.18.1
+scikit-learn==1.9.1
+imbalanced-learn==0.14.2
+joblib==1.6.0
+shap==0.54.1
+fastapi==0.165.0
+uvicorn==0.54.0
+pydantic==2.14.4
+yfinance==1.8.0
+requests==2.34.2

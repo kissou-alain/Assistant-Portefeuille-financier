@@ -1,0 +1,16 @@
+# Déploiement de l'API sur Render (offre gratuite) : Render lit ce fichier à la création du « Blueprint ».
+services:
+  - type: web
+    name: assistant-portefeuille-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-api.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/sante
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      # Adresse(s) de l'interface autorisée(s) à appeler l'API, séparées par des virgules
+      # (les adresses *.vercel.app sont déjà autorisées par défaut)
+      - key: ALLOWED_ORIGINS
+        value: http://localhost:3000
