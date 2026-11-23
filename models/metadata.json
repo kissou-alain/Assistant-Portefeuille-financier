@@ -1,9 +1,12 @@
 {
-  "date_donnees": "2026-11-18",
-  "modele_profil": "Forêt aléatoire",
-  "modele_prevision": "Forêt aléatoire",
-  "IC_validation": 0.1717548076923077,
-  "IC_utilise": 0.08587740384615385,
+  "date_donnees": "2026-11-20",
+  "mode_rapide": true,
+  "modele_profil": "RÃ©gression logistique",
+  "seuil_profil": 0.53,
+  "modele_prevision": "Lasso",
+  "prevision_active": false,
+  "IC_hors_pli": 0.09739991146960457,
+  "IC_utilise": 0.0,
   "penalite_rotation": 2.0,
   "reduction_risque_regime": "aucune",
   "variables_prevision": [
@@ -40,18 +43,21 @@
     "asset_class"
   ],
   "top_variables": [
-    "asset_class",
-    "corr_63",
-    "beta_63",
+    "ret_252",
+    "mom_12_1",
     "ma200_gap",
-    "DGS10_chg63",
-    "INDPRO_yoy",
-    "ret_126",
-    "BAA10Y_chg63",
+    "drawdown_252",
+    "asset_class",
+    "ret_63",
+    "ret_63_rank",
+    "ret_21",
     "vol_63_rank",
-    "ret_63"
+    "vol_21"
   ],
-  "lightgbm": true,
-  "xgboost": true,
-  "shap": true
+  "alerte_min_votes": 3,
+  "rl_graines_retenues": {
+    "Prudent": 0,
+    "Ã‰quilibrÃ©": 0,
+    "Dynamique": 0
+  }
 }
