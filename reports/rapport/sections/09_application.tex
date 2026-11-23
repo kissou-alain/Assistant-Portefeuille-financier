@@ -23,11 +23,34 @@ L'application compte neuf pages, qui suivent le parcours d'un rendez-vous de con
   \item \textbf{Marché} : le régime du jour et ses probabilités, les alertes, et l'historique des cours de chaque actif.
   \item \textbf{Backtest} : les performances historiques de la section~\ref{sec:allocation_backtest}, avec leurs tests de significativité.
   \item \textbf{Laboratoire} : les tableaux de comparaison des modèles, les figures du notebook et une fiche explicative pour chaque modèle.
-  \item \textbf{Journal} : la trace complète des échanges entre agents sur le tableau noir.
+  \item \textbf{Agents} : le dialogue des agents, c'est-à-dire la trace complète de leurs échanges sur le tableau noir.
   \item \textbf{Données} : la date des données, et la mise à jour des cours.
 \end{enumerate}
 
-Le journal et le laboratoire répondent à notre objectif d'explicabilité : un utilisateur peut remonter de la recommandation à la décision de chaque agent, puis au modèle et à son évaluation.
+Les pages Agents et Laboratoire répondent à notre objectif d'explicabilité : un utilisateur peut remonter de la recommandation à la décision de chaque agent, puis au modèle et à son évaluation.
+
+Les figures~\ref{fig:app_profil} à~\ref{fig:app_journal} montrent l'application sur un cas réel d'utilisation. Le client a répondu au questionnaire de façon très prudente (1 point sur 21, avec trois réponses qui plafonnent le profil à Prudent), et le modèle lui attribue 58 \% de probabilité de ressembler aux ménages prudents : les agents proposent donc le profil Prudent. Le conseiller, après discussion avec le client, a choisi d'imposer le profil Dynamique. L'application le permet, mais le signale explicitement (\og validé par le conseiller \fg{}) et le journal l'enregistre (\og Profil imposé : Dynamique \fg{}). C'est l'humain dans la boucle : le système propose et justifie, le conseiller décide et en garde la trace.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{capture_profil.png}
+  \caption{Page Profil : les deux sources du profil (questionnaire et modèle), les plafonds déclenchés par certaines réponses et la validation par le conseiller.}
+  \label{fig:app_profil}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.9\textwidth]{capture_portefeuille.png}
+  \caption{Page Portefeuille : mesures de risque, répartition par classe et par ligne (avec les prévisions indicatives), position sur la frontière efficiente et projection de la valeur sur dix ans.}
+  \label{fig:app_portefeuille}
+\end{figure}
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=0.9\textwidth]{capture_journal.png}
+  \caption{Page Agents : la séquence des agents et le journal des messages publiés sur le tableau noir pendant la recommandation. On y lit notamment la décision du garde-fou de l'agent Prévision (\og signal non utilisé, $\alpha = 0$ \fg{}) et le contrôle de l'agent Risque.}
+  \label{fig:app_journal}
+\end{figure}
 
 \paragraph{Mise à jour sécurisée des données.} Depuis la page Données, l'utilisateur peut télécharger les derniers cours. Seuls les jours manquants sont téléchargés, en 30 secondes au plus ; toutes les variables sont recalculées et contrôlées avant écriture (actifs manquants, dates incohérentes, résultats vides) ; les données précédentes sont sauvegardées et peuvent être restaurées. Les modèles ne sont pas ré-entraînés : ils s'appliquent aux nouvelles données, et un ré-entraînement passe par une nouvelle exécution du notebook.
 

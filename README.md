@@ -35,6 +35,8 @@ Prix   ──► Agent Risque ───────┤  covariance de Ledoit-Wol
 - **Régime et Alerte** : les régimes repèrent le risque à venir (volatilité future plus forte en Stress) ; toutes les crises connues sont détectées.
 - **Allocation** : le risque de chaque profil est respecté ; pas de surperformance établie face à des règles simples de même risque (moins bien pour le profil Prudent). L'agent PPO ne se généralise pas au test.
 
+**Rapport complet** : [`reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf`](reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf). Ses sources LaTeX sont dans `reports/rapport/` (compilation : `tectonic main.tex`, ou Overleaf avec XeLaTeX).
+
 Tous les tableaux : [`results/resultats_synthese.md`](results/resultats_synthese.md). Explication de chaque modèle : [`docs/fiches_modeles.md`](docs/fiches_modeles.md).
 
 ## Données (open data)
@@ -129,7 +131,8 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 ├── app/                  application Streamlit (repli)
 ├── models/               modèles entraînés (générés par le notebook)
 ├── results/              tableaux de résultats
-├── reports/              rapport, présentation, script vidéo, figures
+├── reports/              rapport final (PDF) et ses sources LaTeX (rapport/), figures ;
+│                         versions précédentes du rapport, de la présentation et du script vidéo
 └── docs/                 plan de refonte, fiches explicatives des modèles
 ```
 

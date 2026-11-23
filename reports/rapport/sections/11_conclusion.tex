@@ -1,4 +1,44 @@
 \section{Conclusion, perspectives et apprentissages}
 \label{sec:conclusion}
 
-À rédiger.
+\subsection{Conclusion}
+
+Nous avons construit un assistant de sélection de portefeuille fondé sur sept agents spécialisés, qui mobilisent l'ensemble des familles de méthodes du cours : classification supervisée avec correction du déséquilibre des classes, régression sur données temporelles avec réduction de dimension, clustering, détection d'anomalies, apprentissage par renforcement et explicabilité. Chaque agent a été comparé à des références simples et évalué avec un protocole qui interdit les fuites de données.
+
+Les résultats sont contrastés, et nous les avons présentés comme tels :
+\begin{itemize}
+  \item l'agent \textbf{Profil} fonctionne : une régression logistique, aussi performante que des modèles bien plus complexes, repère 80 \% des clients prudents et généralise à une autre vague d'enquête (AUC de 0,867 sur le test, 0,844 en validation externe) ;
+  \item les agents \textbf{Régime} et \textbf{Alerte} décrivent utilement le marché : le régime de stress annonce une volatilité plus forte, et le vote des détecteurs retrouve les six crises connues ;
+  \item l'agent \textbf{Prévision} ne bat pas la prévision nulle : il est désactivé par un garde-fou décidé à l'avance, ce que le test a confirmé ;
+  \item l'\textbf{allocation} respecte le risque de chaque profil mais ne bat pas des règles simples de même risque, et l'agent de \textbf{renforcement} surapprend ;
+  \item l'\textbf{application}, utilisable en ligne et en local, rend chaque recommandation explicable et traçable.
+\end{itemize}
+La valeur du système tient donc moins à une performance financière qu'à la qualité du conseil : un profil vérifié, un risque maîtrisé, des décisions expliquées, et la capacité de renoncer à un modèle qui n'a pas fait ses preuves.
+
+\subsection{Perspectives}
+
+Plusieurs prolongements nous paraissent prometteurs :
+\begin{itemize}
+  \item \textbf{Juger la prévision sur le classement.} Sur le test, l'agent Prévision classait correctement les actifs (IC de 0,10) sans réduire l'erreur quadratique. Un garde-fou fondé sur l'IC, plus proche de l'usage que l'allocation fait des prévisions, mériterait d'être évalué, sur une période nouvelle.
+  \item \textbf{Adapter le système au contexte marocain} : actifs de la Bourse de Casablanca, prise en compte du dirham et du risque de change, et, si des données le permettaient, un modèle de profil appris sur des ménages marocains.
+  \item \textbf{Calibrer le questionnaire} sur des données, par exemple en apprenant ses seuils à partir des réponses de clients réels.
+  \item \textbf{Recalibrer automatiquement} les détecteurs d'anomalies et les régimes sur une fenêtre glissante, pour suivre la dérive des données.
+  \item \textbf{Enrichir l'apprentissage par renforcement} par des données simulées (bootstrap de trajectoires de marché) pour compenser le faible nombre de mois historiques.
+  \item \textbf{Réévaluer le système en conditions réelles} : la mise à jour quotidienne de la version en ligne accumule désormais une période vraiment nouvelle, sur laquelle le système pourra être jugé sans aucun biais.
+\end{itemize}
+
+\subsection{Ce que ce projet nous a appris}
+
+Au-delà des résultats, ce projet a profondément changé notre manière d'aborder l'apprentissage automatique.
+
+\paragraph{Sur la méthode.} Nous avons appris que l'évaluation compte autant que le modèle. Le moment le plus marquant a été de voir des modèles qui semblaient prédictifs sur la validation (un $R^2$ de 4 \%) devenir inutiles en validation croisée : un seul découpage nous aurait trompés. Nous avons appris à commencer par une référence simple, à séparer les données avant toute transformation, à placer chaque étape dans un pipeline, à respecter l'ordre du temps, et à tester statistiquement nos comparaisons plutôt que de nous fier à quelques millièmes d'écart. Nous avons surtout appris à fixer nos règles de décision \emph{avant} de voir les résultats, et à les appliquer même quand elles nous donnaient tort.
+
+\paragraph{Sur les données réelles.} Les données réelles ne ressemblent pas aux exemples de cours. Il a fallu gérer des calendriers différents, des imputations multiples, des publications décalées dans le temps, des valeurs extrêmes qui ne sont pas des erreurs, et surtout des données dont la distribution change : la dérive de 2022 a affecté presque tous nos agents. Nous avons aussi appris à nos dépens qu'une variable mal choisie (un niveau plutôt qu'une variation) peut ruiner un modèle hors échantillon.
+
+\paragraph{Sur la valeur des résultats négatifs.} Nous espérions, au début du projet, un modèle qui prévoit les marchés. Nous terminons avec un garde-fou qui le désactive, et nous en sommes plus fiers que d'un résultat spectaculaire. Savoir dire, preuves à l'appui, \og ce modèle n'apporte rien \fg{} est une compétence essentielle pour un ingénieur, et c'est celle que ce projet nous a le plus fait travailler.
+
+\paragraph{Sur l'explicabilité.} Expliquer un modèle à un client oblige à le comprendre soi-même. Choisir une régression logistique plutôt qu'un ensemble d'arbres à performance égale nous a permis de produire des explications exactes, et même de recalculer le modèle dans un navigateur. Nous avons compris que la simplicité est souvent un choix d'ingénieur, pas un renoncement.
+
+\paragraph{Sur l'ingénierie.} Passer d'un notebook à une application utilisable nous a confrontés à des questions que le cours ne traite pas directement : organisation du code en modules réutilisables, gestion des versions avec Git, conception d'une API, interface web, déploiement gratuit et respectueux de la vie privée, tests d'égalité entre deux implémentations, mise à jour automatique des données. Nous avons appris à avancer par petites étapes vérifiées, chacune testée et enregistrée avant de passer à la suivante.
+
+\paragraph{Sur le travail en équipe.} Enfin, un projet de cette taille nous a appris à répartir le travail entre agents comme entre personnes : définir clairement ce que chaque partie reçoit et produit, se mettre d'accord sur les conventions, et relire le travail des autres. L'architecture multi-agent du système a, en quelque sorte, reflété notre propre organisation.

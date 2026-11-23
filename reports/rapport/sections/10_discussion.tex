@@ -1,4 +1,35 @@
 \section{Discussion : pertinence, valeur ajoutée et limites}
 \label{sec:discussion}
 
-À rédiger.
+\subsection{Pertinence de la démarche}
+
+\paragraph{Découper le problème plutôt que chercher un modèle unique.} Recommander un portefeuille mêle des questions de nature très différente : classer un client, décrire un marché, détecter un événement rare, prévoir des rendements, optimiser sous contraintes. Le découpage en agents nous a permis de traiter chacune avec la famille de méthodes adaptée, et surtout de l'\emph{évaluer} avec la métrique et la référence qui lui conviennent : rappel des Prudents pour le profil, Diebold-Mariano pour la prévision, volatilité future pour les régimes, crises connues pour les alertes, Sharpe à risque égal pour l'allocation. Un modèle unique de bout en bout aurait été impossible à juger avec cette finesse, et impossible à expliquer.
+
+\paragraph{Une évaluation conçue pour pouvoir dire non.} Nous avons fixé avant chaque évaluation sur le test la règle qui déciderait de l'usage du modèle : seuil de rappel pour le profil, garde-fou de Diebold-Mariano pour la prévision, supériorité significative pour PPO. Ces règles ont joué contre nous à deux reprises (prévision et renforcement), et nous les avons respectées. C'est ce qui donne du crédit aux résultats positifs : quand nous disons que le modèle de profil généralise (AUC de 0,844 sur une autre vague d'enquête), ce n'est pas le fruit d'un choix fait après coup.
+
+\paragraph{Des résultats cohérents avec la littérature.} Nos conclusions principales (un pouvoir prédictif sur les rendements faible et instable, une optimisation qui ne bat pas des règles simples de même risque, un renforcement qui surapprend sur peu de données) sont celles que la recherche en finance a établies~\cite{welch2008,demiguel2009,gu2020}. Cela ne les rend pas moins intéressantes : les retrouver avec notre propre protocole montre que celui-ci ne fabrique pas de faux positifs. Un projet qui aurait annoncé une prévision très performante des rendements aurait dû, au contraire, éveiller la méfiance.
+
+\subsection{Valeur ajoutée}
+
+Le système ne promet pas de battre le marché. Sa valeur se situe ailleurs, à cinq niveaux.
+\begin{enumerate}
+  \item \textbf{Une double vérification du profil.} Le croisement entre la tolérance déclarée et la capacité estimée sur 4\,595 ménages réels, avec une alerte en cas d'incohérence, répond à un vrai problème de conseil : un client qui surestime sa tolérance au risque. Le modèle repère quatre clients prudents sur cinq, et le conseiller garde la décision finale.
+  \item \textbf{Un risque maîtrisé.} Les portefeuilles réalisent un risque conforme à chaque profil, sur une période difficile (marché baissier de 2022, remontée des taux). C'est la première exigence envers un conseiller.
+  \item \textbf{Une explicabilité de bout en bout.} Chaque recommandation est accompagnée d'un texte, d'une décomposition SHAP du profil et du journal des décisions de chaque agent ; chaque modèle est documenté par une fiche et ses résultats d'évaluation. Le système peut toujours répondre à la question \og pourquoi ? \fg{}.
+  \item \textbf{La capacité à renoncer.} Le garde-fou de l'agent Prévision est, à notre sens, l'apport le plus original. Un système qui sait désactiver un de ses propres modèles, quand rien ne prouve son utilité, est plus fiable qu'un système qui utilise tout ce qu'il a appris.
+  \item \textbf{Un outil réel et reproductible.} Une application utilisable en ligne sans installation, qui respecte la confidentialité des visiteurs, et un dépôt qui permet de tout reproduire en une commande.
+\end{enumerate}
+
+\subsection{Limites}
+
+Nous voyons sept limites principales, que nous préférons énoncer clairement.
+\begin{enumerate}
+  \item \textbf{La période de test avait déjà été consultée} lors des versions précédentes du projet. Notre protocole limite le risque que nos choix s'y soient adaptés, mais seule une nouvelle période, postérieure à la remise du projet, permettrait une évaluation entièrement vierge.
+  \item \textbf{Un modèle de profil américain.} L'enquête SCF décrit des ménages américains. Appliquer le modèle à un client marocain, même en convertissant ses montants en dollars, suppose que la relation entre situation financière et prudence soit la même dans les deux pays, ce que nous n'avons pas pu vérifier faute de données publiques équivalentes.
+  \item \textbf{Un questionnaire non calibré.} Les seuils du questionnaire (8 et 15 points sur 21) et ses plafonds sont fixés à dire d'expert, inspirés des pratiques réglementaires, et non appris sur des données.
+  \item \textbf{Un univers d'actifs en dollars.} Les 25 actifs sont cotés aux États-Unis. Pour un investisseur marocain, le risque de change, la fiscalité et l'accès à ces fonds ne sont pas pris en compte.
+  \item \textbf{Le point faible du profil Prudent.} La contrainte de 50 \% d'actifs défensifs a coûté cher en 2022. Elle reflète une convention de la profession plus qu'une optimisation ; la revoir demanderait une autre période de validation.
+  \item \textbf{Des détecteurs qui vieillissent.} La part de jours en alerte passe de 0,6 \% à 19 \% après 2019 : appris sur les années 2010, les détecteurs devront être recalibrés régulièrement.
+  \item \textbf{Un historique court.} Une quinzaine d'années de données mensuelles, c'est peu pour des modèles flexibles, et c'est la cause principale de l'échec de l'agent PPO.
+\end{enumerate}
+Enfin, certaines méthodes ont été volontairement laissées hors du périmètre : réseaux récurrents de type LSTM, modèles de langage pour rédiger les explications, apprentissage semi-supervisé. Avec un signal aussi faible et si peu de données, nous avons jugé plus utile d'approfondir l'évaluation des méthodes du cours que d'en multiplier le nombre.
