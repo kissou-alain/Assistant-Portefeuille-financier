@@ -1,0 +1,122 @@
+% Rapport de projet – modèle de rapport de l'École Centrale Casablanca
+% Compilation : tectonic main.tex   (ou xelatex + bibtex sur Overleaf)
+\documentclass[11pt,a4paper]{article}
+
+% ---------------------------------------------------------------- Langue, polices
+\usepackage{fontspec}
+\usepackage[french]{babel}
+\usepackage{csquotes}
+
+% ---------------------------------------------------------------- Mise en page
+\usepackage[a4paper,top=2.5cm,bottom=2.5cm,left=2.5cm,right=2.5cm,headheight=14pt]{geometry}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usepackage{eso-pic}
+\usepackage{xcolor}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{amsmath,amssymb}
+\usepackage{siunitx}
+\usepackage[hidelinks]{hyperref}
+
+\sisetup{output-decimal-marker={,},group-separator={\,}}
+\graphicspath{{../figures/}{images/}}
+\setlist{itemsep=2pt,topsep=4pt}
+\captionsetup{labelsep=endash,font=small}
+\definecolor{centrale}{HTML}{00966C}
+
+% ---------------------------------------------------------------- Bibliographie
+\usepackage[backend=bibtex,style=numeric,sorting=nyt,maxbibnames=4]{biblatex}
+\renewcommand*{\mkbibnamefamily}[1]{\textsc{#1}}
+\addbibresource{references.bib}
+
+% ---------------------------------------------------------------- Informations du rapport
+\newcommand{\titre}{Assistant multi-agent pour la sélection intelligente de portefeuilles financiers}
+\newcommand{\titrecourt}{Assistant multi-agent de portefeuille}
+\newcommand{\matiere}{Introduction aux techniques d'apprentissage automatique}
+
+% ---------------------------------------------------------------- En-têtes et pieds de page
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\sectionmark}[1]{\markboth{}{\thesection\quad #1}}
+\fancyhead[L]{\textit{\leftmark}}
+\fancyhead[R]{\rightmark}
+\fancyfoot[C]{Rapport - \textbf{\titrecourt}}
+\fancyfoot[R]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\begin{document}
+
+% ================================================================ Page de garde
+\pagenumbering{Alph}
+\begin{titlepage}
+  \AddToShipoutPictureBG*{%
+    \AtPageLowerLeft{\put(\LenToUnit{0.47\paperwidth},\LenToUnit{0.03\paperheight}){%
+      \includegraphics[height=0.56\paperheight]{fond_garde.jpg}}}}
+  \centering
+  \vspace*{1.2cm}
+  \includegraphics[width=0.42\textwidth]{logo_centrale.jpg}\par
+  \vspace{1.6cm}
+  {\Large\scshape École Centrale Casablanca\par}
+  \vspace{1.4cm}
+  {\large\scshape \matiere\par Rapport de projet\par}
+  \vspace{1.2cm}
+  \rule{\linewidth}{0.5pt}\par\vspace{0.4cm}
+  {\LARGE\bfseries \titre\par}
+  \vspace{0.3cm}\rule{\linewidth}{0.5pt}\par
+  \vspace{2cm}
+  \begin{minipage}[t]{0.55\textwidth}
+    \raggedright
+    \textbf{\textit{Élèves :}}\\
+    Wendin Naandé Alain \textsc{Kissou}\\
+    Mory Désiré \textsc{Ouattara}\\
+    Mahamoudou \textsc{Ouedraogo}\\
+    Mouhamadou Bachir \textsc{Ngom}
+  \end{minipage}%
+  \begin{minipage}[t]{0.4\textwidth}
+    \raggedleft
+    \vspace{0.4cm}
+    \textbf{\textit{Encadrant :}}\\
+    Pr. Y. \textsc{Lamrani Alaoui}
+  \end{minipage}
+  \vfill
+  {\large 30 novembre 2026\par}
+\end{titlepage}
+
+% ================================================================ Table des matières
+\pagenumbering{arabic}
+\markboth{TABLE DES MATIÈRES}{Table des matières}
+\tableofcontents
+\clearpage
+
+% ================================================================ Corps du rapport
+\input{sections/01_introduction}
+\input{sections/02_donnees}
+\input{sections/03_profil}
+\input{sections/04_prevision}
+\input{sections/05_regime_alerte}
+\input{sections/06_systeme}
+\input{sections/07_allocation_backtest}
+\input{sections/08_renforcement}
+\input{sections/09_application}
+\input{sections/10_discussion}
+\input{sections/11_conclusion}
+
+% ================================================================ Références
+\clearpage
+\markboth{RÉFÉRENCES}{Références}
+\printbibliography[title=Références]
+
+% ================================================================ Annexes
+\clearpage
+\appendix
+\input{sections/annexes}
+
+\end{document}
