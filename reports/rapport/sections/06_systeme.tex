@@ -1,4 +1,110 @@
 \section{Le système multi-agent}
 \label{sec:systeme}
 
-À rédiger.
+\subsection{Coordination par tableau noir}
+
+Les agents ne s'appellent pas directement : ils lisent et écrivent sur un \textbf{tableau noir} partagé (\emph{blackboard}), une architecture classique des systèmes multi-agents~\cite{wooldridge2009}. Chaque message porte l'agent émetteur, une clé (\texttt{profile}, \texttt{regime}, \texttt{weights}\dots), une valeur et un résumé en français. Un \textbf{orchestrateur} fixe l'ordre d'intervention (figure~\ref{fig:architecture}) :
+\begin{enumerate}
+  \item l'agent \textbf{Profil} publie le profil retenu, le détail des deux sources et une éventuelle alerte d'incohérence ;
+  \item l'agent \textbf{Régime} publie le régime et ses probabilités ; l'orchestrateur en déduit un facteur d'ajustement de la cible de risque ;
+  \item l'agent \textbf{Alerte} indique si la journée est anormale ;
+  \item l'agent \textbf{Prévision} publie ses prévisions et sa décision d'activation ;
+  \item l'agent \textbf{Risque} estime la covariance ;
+  \item l'agent \textbf{Allocation} et l'agent \textbf{Risque} négocient le portefeuille ;
+  \item l'agent \textbf{Explication} rédige la recommandation à partir de tout ce qui a été publié.
+\end{enumerate}
+Ce découpage rend chaque décision \emph{traçable} : le journal du tableau noir, affiché dans l'application, montre qui a décidé quoi et pourquoi.
+
+\subsection{L'agent Allocation : moyenne-variance avec a priori de Black-Litterman}
+
+L'agent Allocation résout un problème d'optimisation moyenne-variance~\cite{markowitz1952} :
+\begin{equation}
+  \max_{w}\; w^\top\mu - \frac{\lambda}{2}\,w^\top\Sigma w - \frac{\gamma}{2}\,\lVert w - w_{\text{préc}}\rVert^2,
+  \qquad \mu = \pi + \alpha, \qquad \pi = \lambda\,\Sigma\,w_{\text{ref}},
+\end{equation}
+sous les contraintes du profil (tableau~\ref{tab:contraintes}) : somme des poids égale à 1, pas de vente à découvert, poids maximal par ligne, plafonds par classe d'actifs, part défensive minimale (obligations et monétaire) et budget de volatilité. Les termes se lisent ainsi :
+\begin{itemize}
+  \item $\Sigma$ est la covariance des rendements, estimée sur un an par \textbf{rétrécissement de Ledoit-Wolf}~\cite{ledoit2004}. Avec 25 actifs et 252 jours, la covariance empirique est mal conditionnée ; le rétrécissement vers une cible structurée la stabilise.
+  \item $\pi$ sont les rendements \og d'équilibre \fg{} implicites de l'\textbf{allocation stratégique de référence} du profil, $w_{\text{ref}}$, selon l'idée de Black et Litterman~\cite{black1992}. Sans autre information, l'optimiseur retrouve exactement $w_{\text{ref}}$ : c'est la condition du premier ordre de l'objectif.
+  \item $\alpha$ sont les vues de l'agent Prévision, \emph{nulles} puisque celui-ci n'a pas été activé.
+  \item $\lambda$ est l'aversion au risque du profil ; $\gamma$ une pénalité de rotation qui freine les échanges, donc les coûts de transaction.
+\end{itemize}
+
+Pourquoi cet a priori ? Sans lui, avec $\alpha = 0$, l'optimiseur cherche simplement la variance minimale et remplit le portefeuille d'obligations courtes, quel que soit le profil. L'a priori de Black-Litterman donne un point de départ raisonnable, propre à chaque profil, dont les prévisions éventuelles s'écarteraient en proportion de leur fiabilité. Nous avons vérifié cette propriété numériquement dans le notebook, à plusieurs dates : sans vue, avec l'aversion de base et sans contrainte de volatilité active, l'optimiseur retrouve $w_{\text{ref}}$ ; en régime de stress, il s'en écarte volontairement vers moins de risque.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Contraintes et allocation stratégique de référence par profil.}
+  \label{tab:contraintes}
+  \begin{tabular}{@{}l r r r@{}}
+    \toprule
+     & \textbf{Prudent} & \textbf{Équilibré} & \textbf{Dynamique} \\
+    \midrule
+    Volatilité cible & 6 \% & 10 \% & 16 \% \\
+    Aversion au risque $\lambda$ & 10 & 5 & 2,5 \\
+    Poids maximal par ligne & 25 \% & 20 \% & 20 \% \\
+    Actions (maximum) & 35 \% & 60 \% & 90 \% \\
+    Obligations + monétaire (minimum) & 50 \% & 25 \% & 0 \% \\
+    Monétaire (maximum) & 40 \% & 30 \% & 20 \% \\
+    Obligations longues (maximum) & 10 \% & 15 \% & 20 \% \\
+    Matières premières (maximum) & 10 \% & 15 \% & 20 \% \\
+    Bitcoin (maximum) & 0 \% & 2 \% & 5 \% \\
+    \midrule
+    \multicolumn{4}{@{}l}{\emph{Allocation stratégique de référence}} \\
+    Actions / Immobilier & 25 \% / 5 \% & 50 \% / 5 \% & 75 \% / 5 \% \\
+    Obligations / Monétaire & 40 \% / 25 \% & 33 \% / 5 \% & 10 \% / 0 \% \\
+    Matières premières / Bitcoin & 5 \% / 0 \% & 7 \% / 0 \% & 8 \% / 2 \% \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{L'agent Risque et la boucle de négociation}
+
+L'agent Risque calcule, pour le portefeuille proposé, la volatilité ex ante, la VaR paramétrique à un mois, la CVaR historique et la pire perte sur la fenêtre d'estimation. Si une limite du profil est dépassée, il refuse le portefeuille : l'orchestrateur réduit alors la cible de volatilité de 10 \% et l'agent Allocation propose un nouveau portefeuille, jusqu'à trois tours. Le budget de volatilité figurant déjà parmi les contraintes de l'optimisation, cette négociation sert surtout de \emph{filet de sécurité} quand les contraintes de classes d'actifs et de risque entrent en conflit, et chaque tour apparaît dans le journal.
+
+\subsection{Références fondées uniquement sur le risque}
+
+Pour juger l'agent Allocation, nous avons implémenté trois allocations qui n'utilisent \emph{aucune} estimation de rendement :
+\begin{itemize}
+  \item la \textbf{parité de risque}~\cite{maillard2010}, où chaque actif contribue autant au risque total : les contributions $RC_i = w_i(\Sigma w)_i/\sigma_p$ sont égales ;
+  \item la \textbf{parité de risque hiérarchique} (HRP)~\cite{lopezdeprado2016}, qui regroupe d'abord les actifs par classification hiérarchique, comme la CAH de la section~\ref{sec:regime_alerte}, sur la distance $d_{ij} = \sqrt{(1-\rho_{ij})/2}$, puis répartit le risque récursivement entre les groupes ; elle n'inverse pas la matrice de covariance et résiste donc mieux aux erreurs d'estimation ;
+  \item le \textbf{1/N}, à poids égaux, réputé difficile à battre~\cite{demiguel2009}.
+\end{itemize}
+Chacune est ramenée à la volatilité cible du profil en la mélangeant avec la poche monétaire, pour une comparaison à risque égal.
+
+\subsection{Démonstration sur quatre clients types}
+
+Le tableau~\ref{tab:clients} montre le système en action sur quatre clients fictifs, à la date du 20 novembre 2026.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Quatre clients types : tolérance déclarée, capacité estimée et profil retenu.}
+  \label{tab:clients}
+  \begin{tabular}{@{}l c c c c c@{}}
+    \toprule
+    \textbf{Client} & \shortstack{\textbf{Score}\\\textbf{questionnaire}} & \shortstack{\textbf{Tolérance}\\\textbf{déclarée}} & \shortstack{\textbf{P(Prudent)}\\\textbf{modèle}} & \shortstack{\textbf{Profil}\\\textbf{retenu}} & \textbf{Alerte} \\
+    \midrule
+    A -- retraité, 68 ans & 7/21 & Prudent & 66 \% & Prudent & non \\
+    B -- cadre, 41 ans & 13/21 & Équilibré & 40 \% & Équilibré & non \\
+    C -- entrepreneur, 32 ans & 18/21 & Dynamique & 23 \% & Dynamique & non \\
+    D -- 26 ans, endetté & 18/21 & Dynamique & 76 \% & Prudent & \textbf{oui} \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Le client D illustre l'intérêt du dispositif. Il se déclare dynamique, mais son revenu faible, son patrimoine net négatif et son endettement le rapprochent des ménages prudents (probabilité de 76 \%, au-dessus du seuil de 0,53). Son profil est ramené à Prudent, et l'agent Explication produit le texte suivant, extrait de la recommandation :
+
+\begin{quote}
+\small
+\textbf{Profil investisseur retenu} : Prudent -- tolérance déclarée : questionnaire 18/21 $\rightarrow$ Dynamique ; capacité estimée par le modèle : Prudent (probabilité de profil prudent 76 \%).\\
+\textbf{Incohérence : le client se déclare Dynamique mais sa situation financière ressemble à celle des ménages prudents. Profil ramené à Prudent -- à valider par le conseiller.}\\
+\textbf{Répartition par classe} : Obligations 47 \%, Monétaire 27 \%, Actions 18 \%, Matières premières 5 \%, Immobilier 3 \%.\\
+\textbf{Risque ex ante} : volatilité annuelle 4,5 \%, VaR 95 \% à 1 mois 2,1 \%.\\
+\textbf{Principales positions} : SHY (Bons du Trésor US 1-3 ans) : 27,4 \% -- écart de rendement prévu vs la moyenne des actifs : $-0{,}5$ \% à 1 mois (rang 25/25 -- indicatif, non utilisé dans l'allocation) ; \dots
+\end{quote}
+
+L'explication reprend les deux sources du profil, l'alerte, la répartition, le risque, et signale explicitement que les prévisions sont indicatives. Le journal correspondant compte seize messages, de \og Tolérance déclarée : questionnaire 18/21 \fg{} à \og Rapport rédigé \fg{}, en passant par \og Contrôle des risques : OK \fg{}.
+
+Lors de cette démonstration, le marché était en régime Stress, et la cible de risque était réduite d'un facteur 0,75 selon le réglage par défaut. Comme nous le verrons dans la section suivante, la validation a finalement conduit à \emph{ne pas} réduire le risque en régime de stress : dans la version finale, le régime est affiché au client mais ne modifie pas l'allocation.
