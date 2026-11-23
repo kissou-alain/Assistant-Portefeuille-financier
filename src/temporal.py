@@ -239,6 +239,24 @@ def evaluate_three_ways(pipe, train: pd.DataFrame, valid: pd.DataFrame, feats: l
     return pd.DataFrame(rows).T
 
 
+def oof_predictions(pipe, data: pd.DataFrame, feats: list, cv: TemporalCV, target: str = "target_reg",
+                    max_rows: int | None = None, seed: int = 0) -> pd.Series:
+    """Prévisions « hors pli » : chaque bloc de validation de la CV est prédit par un modèle
+    entraîné uniquement sur les dates antérieures (purgées). On obtient une longue série de
+    prévisions honnêtes, sans toucher à la période de test.
+    max_rows : sous-échantillonne l'apprentissage (modèles coûteux comme la SVR)."""
+    from sklearn.base import clone
+    dates = data.index.get_level_values("date")
+    out = pd.Series(np.nan, index=data.index)
+    for a, b in cv.split(None, groups=dates):
+        fit_data = data.iloc[a]
+        if max_rows and len(fit_data) > max_rows:
+            fit_data = fit_data.sample(max_rows, random_state=seed).sort_index()
+        m = clone(pipe).fit(fit_data[feats], fit_data[target])
+        out.iloc[b] = m.predict(data.iloc[b][feats])
+    return out.dropna()
+
+
 # ---------------------------------------------------------------------------
 # 4. Test de Diebold-Mariano (cours 2, diapos 15-16)
 # ---------------------------------------------------------------------------

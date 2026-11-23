@@ -16,6 +16,8 @@ le modèle ou de réduire la dimension.
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
 from sklearn.compose import ColumnTransformer
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestRegressor, HistGradientBoostingRegressor
@@ -43,6 +45,49 @@ try:
     import catboost as cb
 except ImportError:
     cb = None
+
+
+class NullBaseline(BaseEstimator, RegressorMixin):
+    """Prévision nulle : ŷ = 0 (aucun actif ne fera mieux que la moyenne)."""
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        return np.zeros(len(X))
+
+
+class AssetMeanBaseline(BaseEstimator, RegressorMixin):
+    """Moyenne historique par actif : rendement excédentaire moyen de chaque actif sur
+    l'apprentissage. X doit être indexé par (date, ticker)."""
+
+    def fit(self, X, y):
+        self.means_ = pd.Series(np.asarray(y), index=X.index.get_level_values("ticker")).groupby(level=0).mean()
+        return self
+
+    def predict(self, X):
+        return X.index.get_level_values("ticker").map(self.means_).fillna(0).to_numpy(dtype=float)
+
+
+class MomentumBaseline(BaseEstimator, RegressorMixin):
+    """Momentum 12-1 : ŷ = β · (rang transversal du momentum − 0,5), β estimé par
+    régression à une variable (sans constante) sur l'apprentissage."""
+
+    def __init__(self, col: str = "mom_12_1_rank"):
+        self.col = col
+
+    def fit(self, X, y):
+        m = X[self.col].fillna(0.5) - 0.5
+        self.beta_ = float((m * np.asarray(y)).sum() / (m ** 2).sum())
+        return self
+
+    def predict(self, X):
+        return self.beta_ * (X[self.col].fillna(0.5) - 0.5).to_numpy(dtype=float)
+
+
+BASELINES = {"Baseline – prévision nulle": NullBaseline(),
+             "Baseline – moyenne par actif": AssetMeanBaseline(),
+             "Baseline – momentum 12-1": MomentumBaseline()}
 
 
 def preprocessor(num_features: list, cat_features: list) -> ColumnTransformer:
