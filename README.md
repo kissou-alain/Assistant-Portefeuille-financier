@@ -2,6 +2,8 @@
 
 Projet de Machine Learning – École Centrale de Casablanca, cours « Introduction aux techniques d'apprentissage automatique ».
 
+**Application en ligne : https://assistant-portefeuille-financier.vercel.app** (détails en [fin de page](#version-en-ligne)).
+
 Sept agents spécialisés coopèrent pour estimer le profil de risque d'un client, lire l'état du marché, détecter les journées anormales, construire une allocation diversifiée sous contraintes et l'expliquer. Le système est évalué sans fuite de données, avec des baselines et des tests statistiques, puis déployé dans une application web (API FastAPI + interface Next.js).
 
 ```
@@ -50,8 +52,8 @@ Détail des sources et des traitements : [`data/README_data.md`](data/README_dat
 Prérequis : Python 3.10 ou plus récent (testé avec 3.12), Node.js 20 ou plus récent (testé avec 24), Git.
 
 ```powershell
-git clone <url-du-depot>
-cd Projet_MultiAgent_Portefeuille
+git clone https://github.com/kissou-alain/Assistant-Portefeuille-financier.git
+cd Assistant-Portefeuille-financier
 python -m venv .venv
 .venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
 .venv\Scripts\python.exe -m pip install -r requirements.txt
@@ -60,8 +62,10 @@ cd web ; npm install ; cd ..
 
 ## Exécution
 
+Le dépôt contient déjà les données, les modèles entraînés et les résultats : on peut lancer directement l'application (étape 3). Les étapes 1 et 2 servent à tout refaire depuis zéro.
+
 ```powershell
-# 1. Télécharger les données réelles (mises en cache dans data/raw/)
+# 1. (Facultatif) Retélécharger les données réelles (mises en cache dans data/raw/)
 .venv\Scripts\python.exe -m src.data_download
 
 # 2. Construire et exécuter le notebook complet (≈ 22 minutes) : il entraîne les modèles,
@@ -116,7 +120,9 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 │   ├── questionnaire.py    questionnaire noté de tolérance au risque
 │   └── backtest.py         simulation, références, mesures de performance
 ├── notebooks/            Projet_MultiAgent_Portefeuille_v4.ipynb (version finale) et versions précédentes
-├── tools/                construire_notebook.py et sections/ (sources du notebook)
+├── tools/                construire_notebook.py et sections/ (sources du notebook) ;
+│                         exporter_site.py et test_profil_parite.py (version en ligne)
+├── .github/workflows/    mise à jour automatique quotidienne de la version en ligne
 ├── api/                  API FastAPI (main.py, services.py)
 ├── web/                  interface Next.js (pages : accueil, diagnostic, profil, portefeuille, marché,
 │                         backtest, laboratoire, agents, données)
@@ -126,6 +132,17 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 ├── reports/              rapport, présentation, script vidéo, figures
 └── docs/                 plan de refonte, fiches explicatives des modèles
 ```
+
+## Version en ligne
+
+### 👉 [Ouvrir l'application : https://assistant-portefeuille-financier.vercel.app](https://assistant-portefeuille-financier.vercel.app)
+
+Même interface que la version locale, publiée sur Vercel sous forme de site statique, sans serveur Python :
+
+- **Les résultats viennent du code Python du projet.** `tools/exporter_site.py` appelle les mêmes fonctions que l'API (`api/services.py`) avec les modèles entraînés par le notebook. Il écrit leurs sorties dans `web/public/donnees/` : marché, régime, alertes, portefeuille de chaque profil, backtest, laboratoire.
+- **Le profil du visiteur est calculé dans son navigateur** avec les paramètres appris du modèle : imputation, écrêtage, standardisation, encodage, coefficients de la régression logistique. L'explication SHAP est elle aussi calculée sur place. Aucune donnée saisie n'est envoyée à un serveur. Rien n'est ré-entraîné : c'est la même formule appliquée aux mêmes nombres. `tools/test_profil_parite.py` le vérifie sur 200 clients et 25 recommandations complètes, avec un écart maximal de 10⁻¹⁶ par rapport à l'API Python.
+- **Mise à jour automatique** : chaque soir de semaine, après la clôture de New York, une tâche GitHub Actions (`.github/workflows/mise-a-jour-site.yml`) télécharge les nouveaux cours, relance l'export et enregistre le résultat dans le dépôt. Vercel republie alors le site. La tâche peut aussi être lancée à la main depuis l'onglet *Actions* du dépôt.
+- La mise à jour manuelle des données (page Données) et la documentation de l'API ne sont disponibles que dans la version locale.
 
 ## Avertissement
 
