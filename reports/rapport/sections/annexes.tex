@@ -42,3 +42,11 @@
   \caption{Courbe d'apprentissage de la régression logistique (AUC sur l'entraînement et en validation croisée par groupes de ménages). L'écart final est de 0,012 : pas de surapprentissage.}
   \label{fig:profil_courbe}
 \end{figure}
+\subsection{Agent Prévision : chemin de régularisation du Lasso}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{10c_lasso_chemin.png}
+  \caption{Chemin de régularisation du Lasso : coefficients selon $\lambda$. La droite verticale marque le $\lambda$ retenu par validation croisée temporelle, pour lequel tous les coefficients sont nuls.}
+  \label{fig:lasso}
+\end{figure}

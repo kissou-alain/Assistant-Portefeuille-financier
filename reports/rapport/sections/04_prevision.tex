@@ -1,4 +1,112 @@
 \section{Agent Prévision : prévoir les rendements, et savoir y renoncer}
 \label{sec:prevision}
 
-À rédiger.
+\subsection{Formulation : une régression sur données temporelles}
+
+L'agent Prévision cherche à repérer les actifs qui feront mieux que les autres le mois suivant. Pour chaque actif $i$ et chaque date $t$, la cible est le rendement \emph{excédentaire} sur $H = 21$ jours de bourse :
+\begin{equation}
+  y_{i,t} = r_{i,\,t\to t+H} - \frac{1}{N_t}\sum_{j=1}^{N_t} r_{j,\,t\to t+H}.
+\end{equation}
+Retirer la moyenne des actifs supprime l'effet \og marché \fg{} commun, que l'allocation n'a pas besoin de prévoir : seul compte le classement relatif. La cible a un écart-type de 5,1 \% par mois sur l'entraînement.
+
+Les données sont organisées par \textbf{fenêtre glissante}, comme le présente le cours pour les données temporelles (tableau~\ref{tab:fenetre}). À chaque date, les 31 variables de la section~\ref{sec:donnees} résument le passé, et la cible porte sur l'horizon futur.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Paramètres de la fenêtre glissante.}
+  \label{tab:fenetre}
+  \begin{tabularx}{\textwidth}{@{}l L L@{}}
+    \toprule
+    \textbf{Terme} & \textbf{Définition} & \textbf{Valeur dans le projet} \\
+    \midrule
+    \emph{Lookback} $L$ & Nombre de pas passés utilisés en entrée & 252 jours (la variable la plus longue porte sur un an) \\
+    \emph{Forecast horizon} $H$ & Nombre de pas futurs à prédire & 21 jours, prévision directe \\
+    \emph{Stride} $S$ & Décalage entre deux échantillons & 5 jours (un échantillon par semaine) \\
+    \emph{Input size} & Variables par pas de temps & 31 \\
+    Chevauchement & Échantillons dont les cibles se recouvrent & $\lceil H/S\rceil - 1 = 4$ \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+Le choix du \emph{stride} est un compromis. Avec $S = 1$, deux échantillons consécutifs partageraient 20 jours de cible sur 21 : ce seraient presque des doublons, qui donneraient une fausse impression de quantité de données. Avec $S = 21$, il ne resterait qu'environ 110 dates d'entraînement. Avec $S = 5$, le chevauchement résiduel de quatre échantillons est pris en compte dans les tests statistiques (correction de Newey-West~\cite{newey1987} et test de Diebold-Mariano). Le panel compte 98\,716 observations ; après découpage et purge, l'entraînement couvre 449 dates (2011-2019), la validation 96 (2020-2021) et le test 241 (janvier 2022 à octobre 2026).
+
+\subsection{Analyse exploratoire du pouvoir prédictif}
+
+En gestion d'actifs, on mesure le pouvoir prédictif d'une variable par son \textbf{coefficient d'information} (IC) : la corrélation de rang de Spearman entre la variable et le rendement futur, calculée date par date puis moyennée. Un IC de 0,03 à 0,05, s'il est stable, est déjà considéré comme exploitable.
+
+Sur l'entraînement, la médiane des IC en valeur absolue n'est que de 0,04. Les variables les plus liées au rendement futur sont la corrélation au S\&P~500 (0,15), le bêta (0,12) et la volatilité (0,07), toutes de signe positif. Elles ne repèrent pas les bons actifs \emph{au sein} d'une classe : elles distinguent les actions des obligations. De 2011 à 2019, marché haussier, les actifs risqués ont nettement battu les actifs défensifs. Ce \og signal \fg{} est une \emph{prime de classe d'actifs propre à la période d'entraînement}. Si le contexte change, il peut disparaître : c'est un risque de \textbf{dérive des données} (\emph{data drift}), et c'est ce qui se produira en 2022.
+
+L'analyse montre aussi que les variables techniques sont fortement corrélées entre elles : différents horizons de momentum, différentes mesures de volatilité. Deux conséquences en découlent : il faudra des modèles régularisés, et une réduction de dimension peut être envisagée.
+
+\subsection{Réduction de dimension : analyse en composantes principales}
+
+L'ACP remplace des variables corrélées par des combinaisons linéaires non corrélées, les composantes principales $F_k = X V_k$, où les $V_k$ sont les vecteurs propres de la matrice de covariance des variables standardisées, rangés par valeur propre $\lambda_k$ décroissante. La part de variance expliquée par $F_k$ vaut $\lambda_k/\sum_j \lambda_j$.
+
+Le cours rappelle que l'ACP n'a d'intérêt que si les variables sont suffisamment corrélées. Nous l'avons vérifié sur l'entraînement : l'indice KMO~\cite{kaiser1974} vaut 0,746 (au-dessus du seuil de 0,6) et le test de sphéricité de Bartlett est très significatif ($\chi^2 = 254\,994$, 190 degrés de liberté, $p < 10^{-4}$). L'ACP est donc justifiée.
+
+\begin{figure}[!htb]
+  \centering
+  \includegraphics[width=\textwidth]{10b_acp.png}
+  \caption{ACP des 20 variables techniques (entraînement) : éboulis des valeurs propres et cercle des corrélations sur le premier plan factoriel.}
+  \label{fig:acp}
+\end{figure}
+
+Les deux premières composantes expliquent 51 \% de la variance, les cinq premières 77 \% (figure~\ref{fig:acp}). Elles ont une lecture financière claire :
+\begin{itemize}
+  \item \textbf{F1, \og tendance \fg{}} (32 \%) : corrélée à tous les rendements passés et aux écarts aux moyennes mobiles ;
+  \item \textbf{F2, \og risque \fg{}} (19 \%) : corrélée aux volatilités, elle oppose les actifs agités aux actifs calmes ;
+  \item \textbf{F3, \og retournement \fg{}} (12 \%) : elle oppose le momentum long au momentum court ;
+  \item \textbf{F4, \og sensibilité au marché \fg{}} (9 \%) : corrélée au bêta et à la corrélation au S\&P~500.
+\end{itemize}
+Les critères de choix du nombre de composantes ne s'accordent pas : 2 selon le coude, 5 selon Kaiser ($\lambda \geq 1$), 6 pour 80 \% de variance, 9 pour 90 \%. Plutôt que de trancher a priori, nous testerons les modèles avec et sans ACP dans le pipeline.
+
+\subsection{Références et modèles comparés}
+
+Toute méthode doit faire mieux que des \textbf{références} sans apprentissage :
+\begin{itemize}
+  \item la \textbf{prévision nulle}, $\hat y = 0$ : aucun actif ne fera mieux que la moyenne ;
+  \item la \textbf{moyenne historique par actif} : le rendement excédentaire moyen de chaque actif sur l'entraînement ;
+  \item le \textbf{momentum 12-1} : les gagnants des douze derniers mois (hors le dernier) continuent de gagner.
+\end{itemize}
+
+Treize modèles du cours ont été comparés, tous dans un pipeline de prétraitement : régression linéaire (MCO) ; Ridge, Lasso et Elastic Net, qui ajoutent à l'erreur quadratique une pénalité $\lambda\lVert\beta\rVert_2^2$, $\lambda\lVert\beta\rVert_1$ ou un mélange des deux ; KNN ; SVR à noyau gaussien ; arbre de décision ; forêt aléatoire ; quatre algorithmes de \emph{boosting} (Gradient Boosting, LightGBM, XGBoost, CatBoost) ; MLP entraîné par Adam. Les hyperparamètres sont choisis par recherche aléatoire (10 combinaisons au plus) en \textbf{validation croisée temporelle à fenêtre croissante, purgée}, sur l'entraînement, selon l'erreur quadratique. Ils sont ensuite réutilisés tels quels dans toutes les comparaisons. La SVR, la plus coûteuse, est entraînée sur 3\,000 lignes.
+
+\begin{table}[!htb]
+  \centering
+  \small
+  \caption{Comparaison sur la validation 2020-2021 (96 dates). $R^2_{oos}$ : $R^2$ hors échantillon par rapport à la prévision nulle.}
+  \label{tab:prev_val}
+  \begin{tabular}{@{}l l r r r@{}}
+    \toprule
+    \textbf{Modèle} & \textbf{Famille} & \textbf{RMSE} & $\boldsymbol{R^2_{oos}}$ & \textbf{IC moyen} \\
+    \midrule
+    Moyenne par actif (référence) & Référence & 0,0691 & 8,4 \% & 0,196 \\
+    Elastic Net & Linéaire régularisé & 0,0707 & 4,1 \% & 0,163 \\
+    Ridge & Linéaire régularisé & 0,0709 & 3,6 \% & 0,157 \\
+    XGBoost & \emph{Boosting} & 0,0710 & 3,4 \% & 0,159 \\
+    LightGBM & \emph{Boosting} & 0,0712 & 2,9 \% & 0,126 \\
+    Forêt aléatoire & \emph{Bagging} & 0,0714 & 2,3 \% & 0,162 \\
+    Gradient Boosting & \emph{Boosting} & 0,0715 & 2,2 \% & 0,098 \\
+    Arbre de décision & Arbre & 0,0717 & 1,5 \% & 0,115 \\
+    Régression linéaire (MCO) & Linéaire & 0,0717 & 1,4 \% & 0,023 \\
+    KNN & Voisinage & 0,0719 & 1,1 \% & 0,078 \\
+    Momentum 12-1 (référence) & Référence & 0,0721 & 0,3 \% & 0,014 \\
+    Prévision nulle (référence) & Référence & 0,0722 & 0 & -- \\
+    Lasso & Linéaire régularisé & 0,0722 & 0,0 \% & -- \\
+    SVR (noyau RBF) & Noyau & 0,0724 & $-0{,}4$ \% & $-0{,}005$ \\
+    CatBoost & \emph{Boosting} & 0,0729 & $-1{,}8$ \% & 0,129 \\
+    MLP (Adam) & Réseau & 0,0759 & $-10{,}4$ \% & 0,217 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\paragraph{Interprétation.} Sur la validation (tableau~\ref{tab:prev_val}), le meilleur \og modèle \fg{} est une référence : la moyenne historique par actif. Les meilleurs modèles appris (Elastic Net, Ridge, XGBoost, forêt aléatoire) obtiennent un $R^2$ de 2 à 4 \% et un IC de 0,13 à 0,16. Les modèles les plus flexibles (MLP, SVR, CatBoost) font moins bien que la prévision nulle : avec un signal aussi faible, leur variance domine. Le cas du MLP est instructif : il a le meilleur IC (0,217) mais le pire $R^2$ ($-10$~\%). Il \emph{classe} bien les actifs sur cette période, mais ses prévisions sont beaucoup trop amples. Les deux métriques mesurent des choses différentes, et une seule période de deux ans ne permet pas de savoir si ce bon classement est durable. Les hyperparamètres retenus le confirment : régularisation maximale pour Ridge ($\lambda \approx 31\,600$), 500 voisins pour le KNN, arbres de profondeur 2 avec au moins 500 observations par feuille, $C = 0{,}01$ pour la SVR. La validation croisée pousse systématiquement vers les modèles les plus simples possibles.
+
+\paragraph{Le Lasso choisit de ne rien prédire.} Le chemin de régularisation du Lasso (en annexe, figure~\ref{fig:lasso}) est particulièrement parlant. Quand $\lambda$ augmente, la pénalité $\lVert\beta\rVert_1$ ramène les coefficients exactement à zéro un par un : c'est une sélection de variables. La validation croisée retient un $\lambda$ pour lequel \emph{les 36 coefficients sont nuls}. Le meilleur Lasso est donc la prévision nulle : d'après la validation croisée, aucune variable n'apporte assez d'information pour mériter un coefficient. C'est un résultat, pas une panne.
+
+\paragraph{L'ACP ne change presque rien.} En ajoutant au pipeline une ACP qui conserve 90 \% de la variance (15 composantes sur les variables numériques), Elastic Net et Ridge obtiennent quasiment les mêmes résultats ($R^2$ de 4,0 \% au lieu de 4,1 \% ; IC de 0,161 au lieu de 0,163). C'est cohérent : les modèles régularisés gèrent déjà les variables corrélées, la pénalité Ridge agissant comme une ACP \og douce \fg{} qui réduit surtout les directions de faible variance~\cite{hastie2009}. L'ACP a ici une valeur d'\emph{interprétation} (les quatre facteurs ci-dessus) plus que de performance.
+
+\paragraph{Diagnostic biais-variance.} Pour Elastic Net, l'erreur d'entraînement ($J_{train} = 0{,}00179$) est nettement inférieure à l'erreur de validation croisée ($J_{cv} = 0{,}00279$), qui dépasse même celle de la prévision nulle (0,00261). Malgré une forte régularisation, le modèle apprend du bruit : nous sommes dans un régime de variance, où le signal est trop faible par rapport au bruit.
+
+\input{sections/04b_prevision}
