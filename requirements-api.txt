@@ -1,9 +1,10 @@
-# Dépendances de l'API seule (déploiement en ligne sur Render).
+# Dépendances de l'API seule et de la mise à jour automatique du site (GitHub Actions).
 # Versions EXACTES de l'environnement d'entraînement : les modèles enregistrés (joblib)
 # doivent être rechargés avec les mêmes versions de scikit-learn, numpy et pandas.
 # Le notebook complet utilise requirements.txt.
 numpy==2.5.5
 pandas==3.1.1
+pyarrow==26.0.1          # requis par pandas 3 pour relire les modèles enregistrés (texte stocké en Arrow)
 scipy==1.18.1
 scikit-learn==1.9.1
 imbalanced-learn==0.14.2
