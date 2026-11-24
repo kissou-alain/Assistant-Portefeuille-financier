@@ -1,0 +1,162 @@
+\section{Fondements théoriques}
+\label{sec:fondements}
+
+Cette section présente les fondements des concepts, méthodes et algorithmes utilisés dans le projet. Elle suit l'ordre du cours~\cite{cours_ml} : cadre général de l'apprentissage supervisé, modèles de classification et de régression, réduction de dimension, apprentissage non supervisé, apprentissage par renforcement, explicabilité, puis les outils statistiques et financiers propres à l'évaluation d'un portefeuille. Les sections suivantes renvoient ici pour les définitions et se concentrent sur les choix et les résultats.
+
+%-----------------------------------------------------------------
+\subsection{Cadre de l'apprentissage supervisé}
+
+\paragraph{Minimisation du risque empirique.} On dispose de $n$ exemples $(x_i, y_i)$, où $x_i \in \mathbb{R}^p$ décrit un individu et $y_i$ est la cible : une classe (classification) ou un nombre (régression). On cherche une fonction $f$ qui minimise l'erreur moyenne sur des données \emph{nouvelles}, que l'on approche par l'erreur sur les données disponibles, éventuellement pénalisée :
+\begin{equation}
+  \hat f = \arg\min_{f \in \mathcal{F}} \; \frac{1}{n}\sum_{i=1}^{n} L\big(y_i, f(x_i)\big) + \lambda\,\Omega(f),
+\end{equation}
+où $L$ est une fonction de perte (erreur quadratique, entropie croisée), $\Omega$ mesure la complexité du modèle et $\lambda \geq 0$ règle le compromis entre ajustement et simplicité~\cite{hastie2009}.
+
+\paragraph{Compromis biais-variance.} L'erreur de prévision attendue en un point se décompose en $\text{biais}^2 + \text{variance} + \sigma^2$, où $\sigma^2$ est le bruit irréductible. Un modèle trop simple a un biais élevé (il sous-apprend) ; un modèle trop flexible a une variance élevée (il apprend le bruit, il surapprend). Le diagnostic se lit sur la \textbf{courbe d'apprentissage} : si l'erreur d'entraînement $J_{train}$ et l'erreur de validation $J_{cv}$ sont proches et élevées, le problème est un biais ; si $J_{train} \ll J_{cv}$, c'est une variance. Ce diagnostic est utilisé pour les agents Profil et Prévision.
+
+\paragraph{Découpage et validation croisée.} Les données sont séparées en trois jeux : l'\textbf{entraînement} ajuste les paramètres, la \textbf{validation} choisit les hyperparamètres et les modèles, le \textbf{test} n'est utilisé qu'une seule fois, pour l'évaluation finale. Toute transformation apprise (imputation, standardisation, ACP, rééchantillonnage) doit être ajustée sur l'entraînement seul, sinon de l'information du jeu d'évaluation \og fuit \fg{} dans le modèle. La \textbf{validation croisée} à $K$ plis découpe l'entraînement en $K$ parts et évalue tour à tour sur chacune après avoir appris sur les autres. Deux variantes sont utilisées :
+\begin{itemize}
+  \item \textbf{stratifiée par groupes}, pour l'enquête SCF : les plis conservent la proportion de chaque classe, et les cinq imputations d'un même ménage restent dans le même pli ;
+  \item \textbf{temporelle}, pour les marchés : on apprend toujours sur le passé et on évalue sur la période qui suit, avec une fenêtre d'apprentissage croissante (\emph{expanding}) ou de taille fixe (\emph{rolling}). Comme les cibles portent sur $H$ jours futurs, on retire (\og purge \fg{}) les observations dont la cible chevauche la période d'évaluation~\cite{lopezdeprado2018}.
+\end{itemize}
+
+\paragraph{Métriques de classification.} Pour une classe positive (ici, les clients Prudents), la matrice de confusion donne les vrais et faux positifs et négatifs ($VP$, $FP$, $VN$, $FN$). On en déduit :
+\begin{equation}
+  \text{précision} = \frac{VP}{VP+FP}, \qquad \text{rappel} = \frac{VP}{VP+FN}, \qquad F_1 = \frac{2\,\text{précision}\cdot\text{rappel}}{\text{précision}+\text{rappel}}.
+\end{equation}
+L'\emph{accuracy} équilibrée est la moyenne des rappels des deux classes ; le F1 macro, la moyenne des F1 des deux classes. Ces mesures dépendent du \textbf{seuil} appliqué à la probabilité prédite. L'\textbf{AUC} (aire sous la courbe ROC, qui trace le taux de vrais positifs en fonction du taux de faux positifs pour tous les seuils) n'en dépend pas : c'est la probabilité qu'un positif tiré au hasard reçoive un score plus élevé qu'un négatif tiré au hasard. Elle mesure la capacité du modèle à \emph{classer}, indépendamment du seuil.
+
+\paragraph{Métriques de régression.} L'erreur quadratique moyenne $\text{RMSE} = \sqrt{\frac{1}{n}\sum_i (y_i - \hat y_i)^2}$ mesure la précision des prévisions. Le $R^2$ hors échantillon compare le modèle à la prévision nulle $\hat y = 0$ :
+\begin{equation}
+  R^2_{oos} = 1 - \frac{\sum_i (y_i - \hat y_i)^2}{\sum_i y_i^2}.
+\end{equation}
+Il est négatif quand le modèle fait moins bien que de ne rien prévoir. En finance, on mesure aussi le \textbf{coefficient d'information} (IC) : la corrélation de rang de Spearman, à une date donnée, entre les prévisions et les rendements réalisés des différents actifs, moyennée sur les dates. Il juge le \emph{classement} des actifs plutôt que l'amplitude des prévisions.
+
+%-----------------------------------------------------------------
+\subsection{Modèles de classification et de régression}
+
+\paragraph{Modèles linéaires.} La \textbf{régression linéaire} (moindres carrés ordinaires, MCO) modélise $\hat y = \beta_0 + x^\top\beta$ et minimise $\sum_i (y_i - \hat y_i)^2$. Avec des variables corrélées, ses coefficients deviennent instables ; on ajoute alors une pénalité :
+\begin{equation}
+  \min_\beta \; \sum_i (y_i - \beta_0 - x_i^\top\beta)^2 + \lambda\Big(\rho\,\lVert\beta\rVert_1 + \frac{1-\rho}{2}\lVert\beta\rVert_2^2\Big).
+\end{equation}
+Avec $\rho = 0$, c'est la régression \textbf{Ridge}~\cite{hoerl1970}, qui rétrécit tous les coefficients vers zéro ; avec $\rho = 1$, le \textbf{Lasso}~\cite{tibshirani1996}, dont la pénalité $L_1$ annule exactement certains coefficients et réalise donc une sélection de variables ; entre les deux, l'\textbf{Elastic Net}~\cite{zou2005}. Les variables doivent être standardisées pour que la pénalité les traite de façon équitable.
+
+La \textbf{régression logistique} adapte ce cadre à la classification binaire. Elle modélise la probabilité de la classe positive par $p(y=1\mid x) = \sigma(\beta_0 + x^\top\beta)$, avec $\sigma(z) = 1/(1+e^{-z})$, et minimise l'entropie croisée
+\begin{equation}
+  -\sum_i \Big[y_i \log p_i + (1-y_i)\log(1-p_i)\Big] + \lambda\lVert\beta\rVert_2^2 .
+\end{equation}
+Le logarithme de la cote, $\log\frac{p}{1-p} = \beta_0 + x^\top\beta$, est linéaire en $x$ : chaque coefficient se lit directement comme l'effet d'une variable.
+
+\paragraph{K plus proches voisins (KNN).} Le KNN~\cite{cover1967} ne construit pas de modèle : pour un nouveau point, il cherche les $k$ exemples les plus proches (distance euclidienne sur variables standardisées) et prédit la classe majoritaire ou la moyenne de leurs cibles. Un petit $k$ donne une frontière très irrégulière (variance) ; un grand $k$, une prévision lissée (biais).
+
+\paragraph{Machines à vecteurs de support (SVM, SVR).} La SVM~\cite{cortes1995} cherche la frontière qui sépare les classes avec la plus grande \emph{marge}, en tolérant des erreurs pénalisées par un coefficient $C$. Grâce à l'astuce du noyau, elle travaille implicitement dans un espace de grande dimension : le noyau gaussien (RBF) $K(x,x') = \exp(-\gamma\lVert x - x'\rVert^2)$ permet des frontières non linéaires. La SVR applique la même idée à la régression : elle ignore les erreurs inférieures à un seuil $\epsilon$ et pénalise les autres. Leur coût de calcul croît au moins avec le carré du nombre d'exemples.
+
+\paragraph{Arbres de décision.} Un arbre CART~\cite{breiman1984} découpe l'espace des variables par des questions successives (\og revenu $<$ seuil ? \fg{}). À chaque nœud, il choisit la variable et le seuil qui réduisent le plus l'impureté des deux groupes créés : l'indice de Gini $G = 1 - \sum_k p_k^2$ en classification, la variance en régression. Un arbre profond est facile à lire mais très instable : une petite modification des données peut changer toute sa structure.
+
+\paragraph{Forêts aléatoires (\emph{bagging}).} Une forêt aléatoire~\cite{breiman2001} fait la moyenne de nombreux arbres profonds, chacun appris sur un échantillon \emph{bootstrap} des données et, à chaque nœud, sur un sous-ensemble tiré au hasard des variables. La moyenne d'arbres peu corrélés entre eux réduit fortement la variance sans augmenter le biais.
+
+\paragraph{\emph{Boosting} de gradient.} Le \emph{boosting}~\cite{friedman2001} construit les arbres \emph{séquentiellement} : chaque nouvel arbre $h_m$, peu profond, est ajusté sur le gradient de la perte par rapport aux prévisions courantes (en régression quadratique, les résidus), puis ajouté avec un pas $\eta$ :
+\begin{equation}
+  F_m(x) = F_{m-1}(x) + \eta\, h_m(x).
+\end{equation}
+Il réduit surtout le biais, et se régularise par le pas, la profondeur des arbres et le nombre d'itérations. Nous avons utilisé l'implémentation de scikit-learn~\cite{pedregosa2011} et trois variantes optimisées : \textbf{XGBoost}~\cite{chen2016}, qui ajoute une pénalité explicite sur la complexité des arbres et une approximation du second ordre de la perte ; \textbf{LightGBM}~\cite{ke2017}, qui accélère la recherche des seuils par histogrammes et fait croître les arbres feuille par feuille ; \textbf{CatBoost}~\cite{prokhorenkova2018}, qui utilise des arbres symétriques et un ordonnancement des exemples réduisant le biais de l'estimation des gradients.
+
+\paragraph{Réseau de neurones (MLP).} Un perceptron multicouche enchaîne des couches $h^{(\ell)} = g\big(W^{(\ell)} h^{(\ell-1)} + b^{(\ell)}\big)$, où $g$ est une fonction d'activation non linéaire (ReLU). Ses poids sont appris par descente de gradient, le gradient étant calculé par rétropropagation. L'optimiseur \textbf{Adam}~\cite{kingma2015} adapte le pas de chaque poids à partir des moyennes mobiles du gradient et de son carré. Très flexible, le MLP a besoin de beaucoup de données pour ne pas surapprendre.
+
+\paragraph{Réglage des hyperparamètres.} Les hyperparamètres ($\lambda$, $k$, $C$, profondeur, nombre d'arbres, pas d'apprentissage\dots) ne sont pas appris par l'algorithme. Ils sont choisis par \textbf{recherche aléatoire} : on tire au hasard des combinaisons dans des plages fixées, et on retient celle qui obtient la meilleure performance en validation croisée.
+
+%-----------------------------------------------------------------
+\subsection{Classes déséquilibrées et seuil de décision}
+
+Quand une classe est minoritaire, la minimisation de l'erreur moyenne favorise la classe majoritaire. Trois corrections classiques existent :
+\begin{itemize}
+  \item la \textbf{pondération des classes} multiplie la perte de chaque exemple par un poids inversement proportionnel à la fréquence de sa classe, $w_k = n / (K\, n_k)$ ;
+  \item \textbf{SMOTE}~\cite{chawla2002} crée des exemples synthétiques de la classe minoritaire sur les segments qui relient un exemple à l'un de ses $k$ plus proches voisins de la même classe : $x_{\text{nouveau}} = x_i + u\,(x_{\text{voisin}} - x_i)$, avec $u \sim \mathcal{U}(0,1)$ ;
+  \item \textbf{ADASYN}~\cite{he2008} génère davantage d'exemples synthétiques autour des points minoritaires entourés de points majoritaires, c'est-à-dire là où la classification est la plus difficile.
+\end{itemize}
+Le rééchantillonnage ne doit être appliqué qu'aux données d'entraînement. Enfin, un classifieur probabiliste ne décide pas seul : la classe prédite dépend du \textbf{seuil} $s$ appliqué à la probabilité, $\hat y = \mathbb{1}[p(y=1\mid x) \geq s]$. Abaisser le seuil augmente le rappel de la classe positive au prix de sa précision ; le seuil est donc un choix métier, à fixer sur la validation.
+
+%-----------------------------------------------------------------
+\subsection{Réduction de dimension : analyse en composantes principales}
+
+L'ACP~\cite{pearson1901} cherche les directions de plus grande variance des données standardisées. Si $R$ est leur matrice de corrélation, de valeurs propres $\lambda_1 \geq \dots \geq \lambda_p$ et de vecteurs propres $V_1, \dots, V_p$, les composantes principales sont $F_k = X V_k$ : elles sont non corrélées, et $F_k$ explique la part $\lambda_k / \sum_j \lambda_j$ de la variance totale. On ne garde que les premières, selon le coude de l'éboulis, le critère de Kaiser ($\lambda_k \geq 1$) ou un pourcentage de variance cumulée. Le cercle des corrélations entre variables et composantes permet de leur donner un sens.
+
+L'ACP n'est utile que si les variables sont suffisamment corrélées. Deux tests le vérifient : l'indice \textbf{KMO}~\cite{kaiser1974}, qui compare les corrélations simples aux corrélations partielles (on exige au moins 0,6), et le \textbf{test de sphéricité de Bartlett}~\cite{bartlett1950}, qui teste l'hypothèse que la matrice de corrélation est l'identité.
+
+%-----------------------------------------------------------------
+\subsection{Apprentissage non supervisé}
+
+\paragraph{Clustering.} Le clustering regroupe les observations sans étiquette. Quatre familles sont utilisées :
+\begin{itemize}
+  \item \textbf{K-means}~\cite{lloyd1982} minimise l'inertie intra-classe $\sum_i \lVert x_i - \mu_{c(i)}\rVert^2$ en alternant deux étapes jusqu'à convergence : affecter chaque point au centre le plus proche, puis recalculer chaque centre comme la moyenne de son groupe. Il produit des groupes sphériques de tailles comparables.
+  \item La \textbf{classification ascendante hiérarchique} (CAH) part d'un groupe par point et fusionne à chaque étape les deux groupes les plus proches. Avec le critère de \textbf{Ward}~\cite{ward1963}, on fusionne les deux groupes dont la réunion augmente le moins l'inertie intra-classe. Le \emph{dendrogramme} représente la suite des fusions.
+  \item \textbf{DBSCAN}~\cite{ester1996} définit un groupe comme une zone dense : un point est \og cœur \fg{} s'il a au moins \texttt{min\_samples} voisins à une distance inférieure à $\varepsilon$ ; les groupes sont les ensembles de points cœurs connectés, et les points isolés sont déclarés comme du bruit. Il trouve des groupes de forme quelconque, sans fixer leur nombre.
+  \item Le \textbf{mélange gaussien} suppose que les données proviennent de $K$ lois normales, $p(x) = \sum_k \pi_k\,\mathcal{N}(x;\mu_k,\Sigma_k)$. Ses paramètres sont estimés par l'algorithme \textbf{EM}~\cite{dempster1977}, qui alterne le calcul des probabilités d'appartenance de chaque point (étape E) et la mise à jour des paramètres par maximum de vraisemblance (étape M). Il donne des \emph{probabilités} d'appartenance et des groupes elliptiques de dispersions différentes. Le critère \textbf{BIC} $= -2\log \hat L + q\log n$ ($q$ paramètres) aide à choisir $K$.
+\end{itemize}
+
+\paragraph{Évaluation d'une partition.} Sans vérité terrain, on juge une partition par des indices internes : le \textbf{coefficient de silhouette}~\cite{rousseeuw1987} $s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$, où $a(i)$ est la distance moyenne de $i$ aux points de son groupe et $b(i)$ aux points du groupe voisin le plus proche ; l'indice de \textbf{Davies-Bouldin}~\cite{davies1979}, qui rapporte la dispersion des groupes à la distance entre leurs centres (plus bas = mieux) ; l'indice de \textbf{Calinski-Harabasz}~\cite{calinski1974}, rapport de l'inertie inter-classe à l'inertie intra-classe (plus haut = mieux). L'\textbf{indice de Rand ajusté} (ARI)~\cite{hubert1985} mesure l'accord entre deux partitions, corrigé du hasard : il vaut 1 pour des partitions identiques, environ 0 pour des partitions indépendantes. Ces indices favorisent tous des groupes compacts et bien séparés.
+
+\paragraph{Détection d'anomalies.} Une anomalie est une observation rare et très différente de la majorité. Six méthodes sont utilisées :
+\begin{itemize}
+  \item le \textbf{z-score} signale une valeur à plus de $k$ écarts-types de la moyenne ;
+  \item le \textbf{test de Grubbs}~\cite{grubbs1969} teste si la valeur la plus extrême d'un échantillon supposé normal est aberrante, avec la statistique $G = \max_i |x_i - \bar x| / s$ ; on le répète tant qu'il rejette ;
+  \item la \textbf{gaussienne multivariée} estime $\mu$ et $\Sigma$ sur les données normales et déclare anormal tout point de densité $p(x;\mu,\Sigma) < \epsilon$ ;
+  \item l'\textbf{Isolation Forest}~\cite{liu2008} isole les points par des coupures aléatoires : un point anormal est isolé en peu de coupures, son chemin moyen dans les arbres est donc court ;
+  \item le \textbf{LOF}~\cite{breunig2000} (\emph{Local Outlier Factor}) compare la densité locale d'un point à celle de ses $k$ voisins : un facteur nettement supérieur à 1 signale un point isolé dans son voisinage ;
+  \item la \textbf{One-Class SVM}~\cite{scholkopf2001} apprend, avec un noyau, une frontière qui entoure la plus grande partie des données ; les points situés au-delà sont des anomalies.
+\end{itemize}
+
+%-----------------------------------------------------------------
+\subsection{Apprentissage par renforcement}
+
+L'apprentissage par renforcement~\cite{sutton2018} formalise un agent qui apprend par essais et erreurs dans un \textbf{processus de décision markovien} : à chaque pas, il observe un état $s_t$, choisit une action $a_t$ selon une politique $\pi_\theta(a\mid s)$, reçoit une récompense $r_t$ et passe à l'état $s_{t+1}$. Il cherche la politique qui maximise l'espérance de la récompense cumulée actualisée $G_t = \sum_{k\geq0}\gamma^k r_{t+k}$, avec $0 \leq \gamma < 1$. La fonction de valeur $V^\pi(s) = \mathbb{E}_\pi[G_t \mid s_t = s]$ mesure l'intérêt d'un état ; l'\emph{avantage} $A^\pi(s,a) = Q^\pi(s,a) - V^\pi(s)$, l'intérêt d'une action par rapport à la moyenne.
+
+Les méthodes de \textbf{gradient de politique} ajustent directement les paramètres $\theta$ d'un réseau de neurones qui renvoie la politique, en suivant le gradient $\nabla_\theta J = \mathbb{E}\big[\nabla_\theta \log\pi_\theta(a_t\mid s_t)\,\hat A_t\big]$. Elles sont instables : une mise à jour trop grande peut dégrader brutalement la politique. \textbf{PPO}~\cite{schulman2017} (\emph{Proximal Policy Optimization}) limite l'ampleur de chaque mise à jour en \og écrêtant \fg{} le rapport $\rho_t(\theta) = \pi_\theta(a_t\mid s_t)/\pi_{\theta_{\text{anc}}}(a_t\mid s_t)$ entre nouvelle et ancienne politique :
+\begin{equation}
+  L^{\text{CLIP}}(\theta) = \mathbb{E}_t\Big[\min\big(\rho_t(\theta)\,\hat A_t,\; \text{clip}(\rho_t(\theta), 1-\varepsilon, 1+\varepsilon)\,\hat A_t\big)\Big],
+\end{equation}
+avec typiquement $\varepsilon = 0{,}2$. Un second réseau (le \og critique \fg{}) estime $V(s)$ pour calculer les avantages. Le dilemme \textbf{exploration-exploitation} est géré par le caractère aléatoire de la politique pendant l'apprentissage.
+
+%-----------------------------------------------------------------
+\subsection{Explicabilité}
+
+\paragraph{Importance par permutation.} Pour mesurer l'importance d'une variable dans un modèle déjà entraîné, on mélange aléatoirement ses valeurs dans le jeu d'évaluation, ce qui casse son lien avec la cible, et on mesure la dégradation de la performance~\cite{breiman2001}. La méthode s'applique à n'importe quel modèle.
+
+\paragraph{Valeurs de Shapley et SHAP.} SHAP~\cite{lundberg2017} explique une prévision individuelle en la décomposant en contributions additives des variables, $f(x) = \phi_0 + \sum_j \phi_j$, où $\phi_0$ est la prévision moyenne. Les contributions sont les \textbf{valeurs de Shapley}~\cite{shapley1953} de la théorie des jeux coopératifs : la contribution d'une variable est son apport marginal moyen sur tous les ordres possibles d'ajout des variables,
+\begin{equation}
+  \phi_j = \sum_{S \subseteq \{1..p\}\setminus\{j\}} \frac{|S|!\,(p-|S|-1)!}{p!}\Big[f_{S\cup\{j\}}(x) - f_S(x)\Big].
+\end{equation}
+Ce calcul est en général coûteux et approché. Pour un modèle linéaire à variables indépendantes, il a une forme exacte et immédiate, $\phi_j = \beta_j\,(x_j - \mathbb{E}[x_j])$, exprimée ici dans l'échelle du logarithme de la cote : c'est ce qui rend les explications de l'agent Profil exactes et calculables dans un navigateur. En moyennant $|\phi_j|$ sur un jeu de données, on obtient aussi une importance globale.
+
+%-----------------------------------------------------------------
+\subsection{Outils statistiques pour les séries temporelles}
+
+\paragraph{Correction de Newey-West.} Quand des cibles se chevauchent dans le temps, les erreurs successives sont autocorrélées et l'écart-type usuel d'une moyenne est sous-estimé. L'estimateur de Newey-West~\cite{newey1987} corrige la variance en ajoutant les autocovariances jusqu'à un retard $m$, pondérées par le noyau de Bartlett : $\hat\sigma^2 = \hat\gamma_0 + 2\sum_{k=1}^{m}\big(1 - \frac{k}{m+1}\big)\hat\gamma_k$. Dans le projet, $m = \lceil H/S\rceil - 1 = 4$.
+
+\paragraph{Test de Diebold-Mariano.} Pour comparer deux séries de prévisions, le test de Diebold-Mariano~\cite{diebold1995} calcule le différentiel de perte $d_t = L(e_{1,t}) - L(e_{2,t})$ et teste $H_0 : \mathbb{E}[d_t] = 0$ avec la statistique $DM = \bar d / \sqrt{\hat\sigma^2_{NW}/T}$, asymptotiquement normale. Nous appliquons la correction de petit échantillon de Harvey, Leybourne et Newbold~\cite{harvey1997}.
+
+\paragraph{Bootstrap par blocs.} Pour obtenir un intervalle de confiance sur une statistique complexe (une différence de ratio de Sharpe, par exemple), le bootstrap rééchantillonne les données avec remise et recalcule la statistique un grand nombre de fois. Sur une série temporelle, rééchantillonner des jours isolés détruirait l'autocorrélation et le regroupement de la volatilité ; le \textbf{bootstrap par blocs}~\cite{kunsch1989} tire donc des blocs de jours consécutifs. L'intervalle à 95 \% est donné par les quantiles 2,5 \% et 97,5 \% des statistiques obtenues.
+
+\paragraph{Test de Kruskal-Wallis.} Ce test non paramétrique~\cite{kruskal1952} compare plusieurs groupes à partir des rangs des observations, sans supposer la normalité. Il sert à vérifier que les régimes de marché diffèrent réellement.
+
+%-----------------------------------------------------------------
+\subsection{Construction et évaluation de portefeuilles}
+
+\paragraph{Optimisation moyenne-variance.} Markowitz~\cite{markowitz1952} formalise le choix d'un portefeuille de poids $w$ comme un compromis entre son rendement espéré $w^\top\mu$ et son risque, mesuré par la variance $w^\top\Sigma w$ :
+\begin{equation}
+  \max_w \; w^\top\mu - \frac{\lambda}{2}\, w^\top\Sigma w \quad \text{sous} \quad \mathbf{1}^\top w = 1,\; w \geq 0,
+\end{equation}
+où $\lambda$ est l'aversion au risque. La solution est très sensible aux erreurs d'estimation de $\mu$ : de petites erreurs produisent des portefeuilles extrêmes et concentrés.
+
+\paragraph{A priori de Black-Litterman.} Black et Litterman~\cite{black1992} remplacent les rendements estimés par des rendements \og d'équilibre \fg{} implicites, $\pi = \lambda\Sigma w_{\text{ref}}$ : ce sont les rendements pour lesquels un portefeuille de référence $w_{\text{ref}}$ serait optimal. On s'en écarte ensuite en proportion de la confiance accordée à des vues. Sans vue, l'optimiseur retrouve le portefeuille de référence.
+
+\paragraph{Estimation de la covariance.} La covariance empirique de 25 actifs estimée sur un an est mal conditionnée. Le \textbf{rétrécissement de Ledoit-Wolf}~\cite{ledoit2004} la combine avec une cible structurée, $\hat\Sigma = \delta F + (1-\delta) S$, où l'intensité $\delta$ est choisie pour minimiser l'erreur quadratique attendue.
+
+\paragraph{Allocations fondées sur le risque.} La \textbf{parité de risque}~\cite{maillard2010} égalise les contributions des actifs au risque total, $RC_i = w_i (\Sigma w)_i / \sigma_p$. La \textbf{parité de risque hiérarchique} (HRP)~\cite{lopezdeprado2016} classe d'abord les actifs par CAH sur la distance $d_{ij} = \sqrt{(1-\rho_{ij})/2}$, puis répartit le capital récursivement entre groupes en proportion inverse de leur variance, sans inverser la matrice de covariance. Le \textbf{1/N} répartit le capital à parts égales~\cite{demiguel2009}.
+
+\paragraph{Mesures de performance et de risque.} Le \textbf{ratio de Sharpe}~\cite{sharpe1966} rapporte le rendement excédentaire au taux sans risque à la volatilité : $SR = (\bar r_p - r_f)/\sigma_p$. La \textbf{VaR} à 95 \% est la perte qui n'est dépassée que dans 5 \% des cas ; la \textbf{CVaR}~\cite{rockafellar2000}, la perte moyenne au-delà de la VaR. La \textbf{perte maximale} (\emph{maximum drawdown}) est la plus forte baisse entre un plus haut et un plus bas ultérieur. La \textbf{rotation} mesure la part du portefeuille échangée, donc les coûts de transaction.
+
+%-----------------------------------------------------------------
+\subsection{Systèmes multi-agents}
+
+Un système multi-agent~\cite{wooldridge2009} répartit un problème entre des agents autonomes, chacun spécialisé dans une tâche, qui coopèrent pour atteindre un objectif commun. L'architecture du \textbf{tableau noir} (\emph{blackboard}) les fait communiquer par une mémoire partagée : chaque agent lit les informations dont il a besoin et publie ses résultats, sans appeler directement les autres. Un orchestrateur fixe l'ordre d'intervention et arbitre les conflits, par exemple par une \textbf{négociation} entre un agent qui propose et un agent qui contrôle. Cette organisation rend chaque décision traçable et permet de remplacer ou de désactiver un agent sans toucher aux autres.
