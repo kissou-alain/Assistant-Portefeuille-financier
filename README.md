@@ -37,7 +37,7 @@ Prix   ──► Agent Risque ───────┤  covariance de Ledoit-Wol
 
 **Rapport complet** : [`reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf`](reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf). Ses sources LaTeX sont dans `reports/rapport/` (compilation : `tectonic main.tex`, ou Overleaf avec XeLaTeX).
 
-**Livrables finaux (version 4)** : le rapport ci-dessus, la présentation [`reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx`](reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx) et le notebook `notebooks/Projet_MultiAgent_Portefeuille_v4.ipynb`. Les versions antérieures (rapport Word, première présentation et premier script vidéo, anciens notebooks, application Streamlit) sont rangées dans [`archives/`](archives/README.md), pour l'historique uniquement.
+**Livrables finaux (version 4)** : le rapport ci-dessus, la présentation [`reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx`](reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx) le script de la vidéo [`reports/Script_Video_v4.md`](reports/Script_Video_v4.md) et le notebook `notebooks/Projet_MultiAgent_Portefeuille_v4.ipynb`. Les versions antérieures (rapport Word, première présentation et premier script vidéo, anciens notebooks, application Streamlit) sont rangées dans [`archives/`](archives/README.md), pour l'historique uniquement.
 
 Tous les tableaux : [`results/resultats_synthese.md`](results/resultats_synthese.md). Explication de chaque modèle : [`docs/fiches_modeles.md`](docs/fiches_modeles.md).
 
