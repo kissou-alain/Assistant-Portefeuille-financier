@@ -37,7 +37,7 @@ Prix   ──► Agent Risque ───────┤  covariance de Ledoit-Wol
 
 **Rapport complet** : [`reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf`](reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf). Ses sources LaTeX sont dans `reports/rapport/` (compilation : `tectonic main.tex`, ou Overleaf avec XeLaTeX).
 
-**Livrables finaux (version 4)** : le rapport ci-dessus, la présentation [`reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx`](reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx) et le notebook `notebooks/Projet_MultiAgent_Portefeuille_v4.ipynb`. Les fichiers sans suffixe `_v4` (rapport `.docx`, ancienne présentation, `Script_Video_Presentation.md`, notebooks `_sauvegarde`, application Streamlit) sont les versions antérieures, conservées pour l'historique.
+**Livrables finaux (version 4)** : le rapport ci-dessus, la présentation [`reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx`](reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx) et le notebook `notebooks/Projet_MultiAgent_Portefeuille_v4.ipynb`. Les versions antérieures (rapport Word, première présentation et premier script vidéo, anciens notebooks, application Streamlit) sont rangées dans [`archives/`](archives/README.md), pour l'historique uniquement.
 
 Tous les tableaux : [`results/resultats_synthese.md`](results/resultats_synthese.md). Explication de chaque modèle : [`docs/fiches_modeles.md`](docs/fiches_modeles.md).
 
@@ -84,7 +84,7 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 - **Mode rapide** : mettre `QUICK_RUN = True` dans la section 0 (`tools/sections/s00_introduction.py`) pour une exécution de test en environ 6 minutes (grilles réduites ; résultats non représentatifs).
 - **Lancement manuel de l'application**, dans deux terminaux :
   `.venv\Scripts\python.exe -m uvicorn api.main:app --port 8000` puis `cd web ; npm run dev`. Documentation de l'API : http://localhost:8000/docs
-- **Application de repli** (Streamlit, version 1) : `.venv\Scripts\streamlit.exe run app/streamlit_app.py`
+- **Application de repli** (Streamlit, version 1) : `.venv\Scripts\streamlit.exe run archives/application_streamlit_v1/streamlit_app.py`
 - **Mise à jour des données** depuis l'application (page Données) : téléchargement incrémental limité à 30 s, contrôles avant écriture, sauvegarde et restauration ; les modèles ne sont pas ré-entraînés.
 
 ## Reproduction des résultats
@@ -123,19 +123,18 @@ powershell -ExecutionPolicy Bypass -File .\start.ps1
 │   ├── agents.py           les agents et l'orchestrateur
 │   ├── questionnaire.py    questionnaire noté de tolérance au risque
 │   └── backtest.py         simulation, références, mesures de performance
-├── notebooks/            Projet_MultiAgent_Portefeuille_v4.ipynb (version finale) et versions précédentes
+├── notebooks/            Projet_MultiAgent_Portefeuille_v4.ipynb (version finale)
 ├── tools/                construire_notebook.py et sections/ (sources du notebook) ;
 │                         exporter_site.py et test_profil_parite.py (version en ligne)
 ├── .github/workflows/    mise à jour automatique quotidienne de la version en ligne
 ├── api/                  API FastAPI (main.py, services.py)
 ├── web/                  interface Next.js (pages : accueil, diagnostic, profil, portefeuille, marché,
 │                         backtest, laboratoire, agents, données)
-├── app/                  application Streamlit (repli)
 ├── models/               modèles entraînés (générés par le notebook)
 ├── results/              tableaux de résultats
-├── reports/              rapport final (PDF) et ses sources LaTeX (rapport/), figures ;
-│                         versions précédentes du rapport, de la présentation et du script vidéo
-└── docs/                 plan de refonte, fiches explicatives des modèles
+├── reports/              rapport final (PDF) et ses sources LaTeX (rapport/), présentation PowerPoint, figures
+├── docs/                 fiches explicatives des modèles
+└── archives/             versions antérieures (rapport Word, anciens notebooks, application Streamlit…)
 ```
 
 ## Version en ligne

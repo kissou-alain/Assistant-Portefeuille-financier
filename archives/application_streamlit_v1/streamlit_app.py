@@ -16,7 +16,7 @@ import plotly.express as px
 import streamlit as st
 import joblib
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]  # archives/application_streamlit_v1/ -> racine du dépôt
 sys.path.insert(0, str(ROOT))
 
 from src.config import (ASSET_CLASS, ASSET_NAME, CURRENCIES, DATA_PROC, MODELS_DIR, PROFILE_CLASSES,
