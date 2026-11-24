@@ -7,7 +7,7 @@ Nous avons construit un assistant de sélection de portefeuille fondé sur sept 
 
 Les résultats sont contrastés, et nous les avons présentés comme tels :
 \begin{itemize}
-  \item l'agent \textbf{Profil} fonctionne : une régression logistique, aussi performante que des modèles bien plus complexes, repère 80 \% des clients prudents et généralise à une autre vague d'enquête (AUC de 0,867 sur le test, 0,844 en validation externe) ;
+  \item l'agent \textbf{Profil} fonctionne : une régression logistique, aussi performante que des modèles bien plus complexes, repère 80 \% des clients prudents et généralise à une autre vague d'enquête (AUC de 0,867 sur le test, 0,843 en validation externe) ;
   \item les agents \textbf{Régime} et \textbf{Alerte} décrivent utilement le marché : le régime de stress annonce une volatilité plus forte, et le vote des détecteurs retrouve les six crises connues ;
   \item l'agent \textbf{Prévision} ne bat pas la prévision nulle : il est désactivé par un garde-fou décidé à l'avance, ce que le test a confirmé ;
   \item l'\textbf{allocation} respecte le risque de chaque profil mais ne bat pas des règles simples de même risque, et l'agent de \textbf{renforcement} surapprend ;

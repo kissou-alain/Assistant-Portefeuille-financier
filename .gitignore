@@ -8,6 +8,8 @@ venv/
 catboost_info/
 web_dev.log
 notebooks/_test_*.ipynb
+# Fichiers de verrouillage temporaires d'Office (document ouvert)
+~$*
 
 # Les données brutes, les données préparées et les modèles entraînés SONT versionnés :
 # le dépôt est utilisable directement après un clone (≈ 100 Mo).

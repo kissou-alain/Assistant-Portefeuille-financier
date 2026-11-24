@@ -10,6 +10,7 @@ Toutes les données sont **réelles** et proviennent de sources publiques offici
 | `yahoo_volume_raw.csv` | Yahoo Finance | Volumes échangés (contrôle qualité). |
 | `fred_raw.csv` | FRED, https://fred.stlouisfed.org | Séries aux fréquences d'origine : DGS10, DGS2, DTB3, T10Y2Y, BAA10Y, VIXCLS (quotidiennes) ; CPIAUCSL, UNRATE, INDPRO (mensuelles). |
 | `scfp2022.csv` | Federal Reserve Board, Survey of Consumer Finances 2022, *Summary Extract Public Data* : https://www.federalreserve.gov/econres/scfindex.htm | Une ligne par implicate (5 par ménage). Variables utilisées : YY1, WGT, AGE, KIDS, INCOME, NETWORTH, ASSET, DEBT, LEVRATIO, DEBT2INC, KNOWL, FINLIT, HHSEX, EDCL, MARRIED, OCCAT1, LIFECL, HOUSECL, SAVED, NOFINRISK, YESFINRISK. |
+| `scfp2019.csv` | Federal Reserve Board, Survey of Consumer Finances 2019, *Summary Extract Public Data* (même adresse) | Même format et mêmes variables que la vague 2022. Sert **uniquement à la validation externe** de l'agent Profil : le modèle appris sur 2022 y est appliqué sans réentraînement, après conversion des montants en dollars de 2022 avec l'indice des prix (CPI). |
 
 ### Univers d'investissement (25 actifs)
 Actions : SPY, QQQ, IWM, EFA, EEM · Secteurs US : XLK, XLF, XLV, XLE, XLY, XLP, XLI, XLU · Immobilier : VNQ · Monétaire : SHY · Obligations : IEF, TLT, LQD, HYG, TIP, EMB · Matières premières : GLD, SLV, DBC · Crypto : BTC-USD.

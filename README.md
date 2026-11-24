@@ -37,6 +37,8 @@ Prix   ──► Agent Risque ───────┤  covariance de Ledoit-Wol
 
 **Rapport complet** : [`reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf`](reports/Rapport_Projet_MultiAgent_Portefeuille_v4.pdf). Ses sources LaTeX sont dans `reports/rapport/` (compilation : `tectonic main.tex`, ou Overleaf avec XeLaTeX).
 
+**Livrables finaux (version 4)** : le rapport ci-dessus, la présentation [`reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx`](reports/Presentation_Projet_MultiAgent_Portefeuille_v4.pptx) et le notebook `notebooks/Projet_MultiAgent_Portefeuille_v4.ipynb`. Les fichiers sans suffixe `_v4` (rapport `.docx`, ancienne présentation, `Script_Video_Presentation.md`, notebooks `_sauvegarde`, application Streamlit) sont les versions antérieures, conservées pour l'historique.
+
 Tous les tableaux : [`results/resultats_synthese.md`](results/resultats_synthese.md). Explication de chaque modèle : [`docs/fiches_modeles.md`](docs/fiches_modeles.md).
 
 ## Données (open data)
